@@ -29,8 +29,6 @@
 
         <service android:name=".service.CommunicationService" />
 
-        <service android:name=".service.FileTransferService" />
-
     </application>
 
 </manifest>

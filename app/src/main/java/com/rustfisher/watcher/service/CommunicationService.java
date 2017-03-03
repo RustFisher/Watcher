@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
@@ -16,6 +18,7 @@ import android.util.Log;
 import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
 import com.rustfisher.watcher.manager.LocalDevice;
+import com.rustfisher.watcher.utils.WPProtocol;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,7 +53,9 @@ public class CommunicationService extends Service {
         super.onCreate();
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
-
+        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+        LocalDevice.setLocalIPAddress(LocalDevice.intToIpStr(wifiInfo.getIpAddress()));
         IntentFilter intentFilter = LocalUtils.makeWiFiP2pIntentFilter();
         intentFilter.addAction(MSG_STOP);
         registerReceiver(mReceiver, intentFilter);
@@ -97,6 +102,7 @@ public class CommunicationService extends Service {
 
     private void stopAllSocketThread() {
         mLocalDevice.stopClientTransferThread();
+        mLocalDevice.stopGroupOwnerTransferThread();
         stopGroupOwnerThread();
         stopClientThread();
     }
@@ -128,6 +134,7 @@ public class CommunicationService extends Service {
             mClientThread = new ReceiveSocketThread(AppConfigs.PORT_CLIENT);
             mClientThread.start();
         }
+        mLocalDevice.stopGroupOwnerTransferThread();
         mLocalDevice.startClientTransferThread();
     }
 
@@ -172,6 +179,11 @@ public class CommunicationService extends Service {
                     byte[] buffer = new byte[1024];
                     int readCount = inputstream.read(buffer);
                     if (readCount > 0) {
+                        boolean isAddressCMD = LocalDevice.isAddressCMD(buffer, readCount);
+                        if (isAddressCMD) {
+                            // Receive a client address, now start new a socket to the client
+                            LocalDevice.getInstance().startGroupOwnerTransferThread();
+                        }
                         LocalUtils.logd(buffer, readCount);
                     }
                 }

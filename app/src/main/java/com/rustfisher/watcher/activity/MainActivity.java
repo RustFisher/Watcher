@@ -21,6 +21,10 @@ import com.rustfisher.watcher.utils.LocalUtils;
 import com.rustfisher.watcher.manager.LocalDevice;
 import com.rustfisher.watcher.service.CommunicationService;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -28,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String TAG = "rustApp";
     private TextView mLogTv;
     private TextView mLocalInfoTv;
-    private LinearLayout mClientLin;
+    private LinearLayout mMsgLin;
     private Button mDisconnectBtn;
     private Button mSendMsgBtn;
     private EditText mClientEt;
@@ -49,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         registerReceiver(mBroadcastReceiver, LocalUtils.makeWiFiP2pIntentFilter());
-        mClientLin.setVisibility(LocalDevice.getInstance().isClient() ? View.VISIBLE : View.INVISIBLE);
+        mMsgLin.setVisibility(LocalDevice.getInstance().isClient() ? View.VISIBLE : View.INVISIBLE);
     }
 
     @Override
@@ -72,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
     private void initUI() {
         mClientEt = (EditText) findViewById(R.id.et);
         mSendMsgBtn = (Button) findViewById(R.id.sendBtn);
-        mClientLin = (LinearLayout) findViewById(R.id.clientLin);
+        mMsgLin = (LinearLayout) findViewById(R.id.clientLin);
         mDisconnectBtn = (Button) findViewById(R.id.disconnectBtn);
         mLocalInfoTv = (TextView) findViewById(R.id.localInfoTv);
         mLogTv = (TextView) findViewById(R.id.logTv);
@@ -108,6 +112,9 @@ public class MainActivity extends AppCompatActivity {
                 if (mLocalDevice.isClient()) {
                     mLocalDevice.sendMsgToGroupOwner(mClientEt.getText().toString());
                     mClientEt.setText("");
+                } else if (mLocalDevice.isGroupOwner()) {
+                    mLocalDevice.sendMsgToClient(mClientEt.getText().toString());
+                    mClientEt.setText("");
                 }
             }
         });
@@ -118,6 +125,18 @@ public class MainActivity extends AppCompatActivity {
         mWifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mWifiP2pManager.initialize(this, getMainLooper(), null);
         Log.d(TAG, "Main manager " + mWifiP2pManager.toString() + " MainAct mChannel: " + mChannel);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Log.d(TAG, "InetAddress.getLocalHost:  " + InetAddress.getLocalHost());
+                    Log.d(TAG, "Inet4Address.getLocalHost: " + Inet4Address.getLocalHost());
+                    Log.d(TAG, "Inet6Address.getLocalHost: " + Inet6Address.getLocalHost());
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
@@ -136,16 +155,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
                 NetworkInfo netInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
                 mDisconnectBtn.setVisibility(netInfo.isConnected() ? View.VISIBLE : View.INVISIBLE);
-                if (netInfo.isConnected()) {
-                    mWifiP2pManager.requestConnectionInfo(mChannel, new WifiP2pManager.ConnectionInfoListener() {
-                        @Override
-                        public void onConnectionInfoAvailable(WifiP2pInfo info) {
-                            mClientLin.setVisibility(info.isGroupOwner ? View.INVISIBLE : View.VISIBLE);
-                        }
-                    });
-                } else {
-                    mClientLin.setVisibility(View.INVISIBLE);
-                }
+                mMsgLin.setVisibility(netInfo.isConnected() ? View.VISIBLE : View.INVISIBLE);
             } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
                 WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
                 updateLocalDeviceInfo(device);
@@ -154,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void updateLocalDeviceInfo(WifiP2pDevice device) {
-        mLocalInfoTv.setText(String.format(Locale.ENGLISH, "Name: %s\nAddress: %s\nStatus: %s",
+        mLocalInfoTv.setText(String.format(Locale.ENGLISH, "Name: %s\nMac address: %s\nStatus: %s",
                 device.deviceName, device.deviceAddress, LocalUtils.getDeviceStatusStr(device.status)));
     }
 

@@ -185,7 +185,7 @@ public class DeviceListActivity extends Activity {
     };
 
     private void updateLocalDeviceInfo(WifiP2pDevice device) {
-        mInfoTv.setText(String.format(Locale.ENGLISH, "Local Name: %s\nLocal Address: %s\nLocalStatus: %s",
+        mInfoTv.setText(String.format(Locale.ENGLISH, "Local Name: %s\nLocal mac address: %s\nLocalStatus: %s",
                 device.deviceName, device.deviceAddress, LocalUtils.getDeviceStatusStr(device.status)));
     }
 

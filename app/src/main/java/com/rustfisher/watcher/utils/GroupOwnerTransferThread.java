@@ -11,19 +11,19 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 /**
- * Create a socket to group owner as a client.
- * Created by Rust Fisher on 2017/3/1.
+ * Create a socket to client as a group owner.
+ * Created by Rust Fisher on 2017/3/2.
  */
-public class ClientTransferThread extends Thread {
+public class GroupOwnerTransferThread extends Thread {
     private static final String TAG = "rustApp";
     private static final int SOCKET_TIMEOUT = 5000;
 
     private InetAddress host;
-    private String msg = "Hello from the outside";
+    private String msg = "Hello, this is GroupOwner. How R U ?";
     private boolean mmRunning;
     private boolean mmIsPause;
 
-    public ClientTransferThread(InetAddress hostAddress) {
+    public GroupOwnerTransferThread(InetAddress hostAddress) {
         this.host = hostAddress;
         mmRunning = true;
     }
@@ -36,15 +36,15 @@ public class ClientTransferThread extends Thread {
     @Override
     public void run() {
         super.run();
-        Log.d(TAG, getId() + " ClientTransferThread runs.");
+        Log.d(TAG, getId() + " GroupOwnerTransferThread runs.");
         Socket socket = new Socket();
         try {
             socket.bind(null);
-            socket.connect((new InetSocketAddress(host, AppConfigs.PORT_GROUP_OWNER)), SOCKET_TIMEOUT);
-            Log.d(TAG, "Client socket is connected: " + socket.isConnected());
+            socket.connect((new InetSocketAddress(host, AppConfigs.PORT_CLIENT)), SOCKET_TIMEOUT);
+            Log.d(TAG, "I am a group owner, connect to client. Socket is connected: " + socket.isConnected());
             if (socket.isConnected()) {
                 OutputStream os = socket.getOutputStream();
-                os.write((WPProtocol.MY_IP_ADDRESS + "#" + LocalDevice.getLocalIPAddress()).getBytes());
+                os.write(msg.getBytes());
                 pauseThread();
                 while (mmRunning && !isInterrupted()) {
                     if (!mmIsPause) {
@@ -60,7 +60,7 @@ public class ClientTransferThread extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Log.d(TAG, getId() + " ClientTransferThread exits.");
+        Log.d(TAG, getId() + " GroupOwnerTransferThread exits.");
     }
 
     public synchronized void pauseThread() {

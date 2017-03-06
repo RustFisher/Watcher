@@ -22,8 +22,10 @@ import com.rustfisher.watcher.utils.WPProtocol;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 
 /**
  * Hold some service
@@ -34,6 +36,7 @@ public class CommunicationService extends Service {
     private static final String TAG = "rustApp";
 
     public static final String MSG_STOP = "com.rustfisher.stop_CommunicationService";
+    public static final String MSG_ONE_PIC = "com.rustfisher.MSG_ONE_PIC";
 
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
@@ -59,14 +62,16 @@ public class CommunicationService extends Service {
         IntentFilter intentFilter = LocalUtils.makeWiFiP2pIntentFilter();
         intentFilter.addAction(MSG_STOP);
         registerReceiver(mReceiver, intentFilter);
-
+        mLocalDevice.setService(this);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        mLocalDevice.exitDevice();
         unregisterReceiver(mReceiver);
-        Log.d(TAG, "Service onDestroy, 88");
+        mLocalDevice.setService(null);
+        Log.d(TAG, "Service onDestroy, bye!");
     }
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -102,7 +107,6 @@ public class CommunicationService extends Service {
 
     private void stopAllSocketThread() {
         mLocalDevice.stopClientTransferThread();
-        mLocalDevice.stopGroupOwnerTransferThread();
         stopGroupOwnerThread();
         stopClientThread();
     }
@@ -121,6 +125,14 @@ public class CommunicationService extends Service {
         }
     }
 
+    public void send(byte[] msg) {
+        if (mGroupOwnerThread != null) {
+            mGroupOwnerThread.send(msg);
+        } else {
+            Log.e(TAG, "send fail");
+        }
+    }
+
     private void asGroupOwner() {
         if (mGroupOwnerThread == null) {
             mGroupOwnerThread = new ReceiveSocketThread(AppConfigs.PORT_GROUP_OWNER);
@@ -130,11 +142,6 @@ public class CommunicationService extends Service {
     }
 
     private void asClient() {
-        if (null == mClientThread) {
-            mClientThread = new ReceiveSocketThread(AppConfigs.PORT_CLIENT);
-            mClientThread.start();
-        }
-        mLocalDevice.stopGroupOwnerTransferThread();
         mLocalDevice.startClientTransferThread();
     }
 
@@ -142,17 +149,31 @@ public class CommunicationService extends Service {
      * Receive data via socket.
      */
     class ReceiveSocketThread extends Thread {
-
+        //        private static final int CAMERA_ONE_PIC_LEN = 7554;
+        private static final int CAMERA_ONE_PIC_LEN = 7;
         private volatile boolean running = true;
         private ServerSocket serverSocket;
         private final int port;
+        private ArrayList<Byte> bufferList;
+        private InputStream inputstream;
+        private OutputStream outputStream;
 
         public ReceiveSocketThread(int port) {
             this.port = port;
+            bufferList = new ArrayList<>();
+            bufferList.ensureCapacity(10000);
         }
 
-        public boolean isRunning() {
-            return running;
+        public void send(byte[] msg) {
+            if (null != outputStream) {
+                try {
+                    outputStream.write(msg);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                Log.e(TAG, "null == outputStream ");
+            }
         }
 
         @Override
@@ -169,29 +190,88 @@ public class CommunicationService extends Service {
         @Override
         public void run() {
             super.run();
-            Log.d(TAG, "socket run at " + port);
+            Log.d(TAG, "Receive socket run at " + port);
             try {
                 serverSocket = new ServerSocket(port);
-                Log.d(TAG, "Socket opened");
+                Log.d(TAG, "Group owner socket opened, waiting...");
                 Socket client = serverSocket.accept();
-                InputStream inputstream = client.getInputStream();
+                Log.d(TAG, "Group owner socket accepted. We can talk now!");
+                inputstream = client.getInputStream();
+                outputStream = client.getOutputStream();
                 while (!isInterrupted() && running) {
-                    byte[] buffer = new byte[1024];
+                    byte[] buffer = new byte[CAMERA_ONE_PIC_LEN + WPProtocol.DATA_HEAD_CAMERA.length];
                     int readCount = inputstream.read(buffer);
                     if (readCount > 0) {
-                        boolean isAddressCMD = LocalDevice.isAddressCMD(buffer, readCount);
-                        if (isAddressCMD) {
-                            // Receive a client address, now start new a socket to the client
-                            LocalDevice.getInstance().startGroupOwnerTransferThread();
-                        }
-                        LocalUtils.logd(buffer, readCount);
+                        Log.d(TAG, " read count = " + readCount);
+                        arrangeDataBuffer(buffer, readCount);
                     }
                 }
                 Log.d(TAG, "connection over");
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    if (null != inputstream) {
+                        inputstream.close();
+                    }
+                    if (null != outputStream) {
+                        outputStream.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
             Log.d(TAG, "socket thread exits.");
+        }
+
+        private void arrangeDataBuffer(byte[] buffer, int readCount) {
+            Log.d(TAG, "arrangeDataBuffer: read count=" + readCount);
+            for (int i = 0; i < readCount; i++) {
+                bufferList.add(buffer[i]);
+            }
+            for (int i = 0; i < bufferList.size() && (bufferList.size() >= (CAMERA_ONE_PIC_LEN + WPProtocol.DATA_HEAD_ONE_PIC.length + WPProtocol.DATA_END.length)); i++) {
+                // scan the buffer list
+                int bufferCount = bufferList.size();
+                int startIndex = -1;
+                int stopIndex = -1;
+                for (int scanIndex = 0; scanIndex < bufferCount - 3; scanIndex++) {
+                    if (bufferList.get(scanIndex) == WPProtocol.DATA_HEAD_1 &&
+                            bufferList.get(scanIndex + 1) == WPProtocol.DATA_HEAD_2 &&
+                            bufferList.get(scanIndex + 2) == WPProtocol.DATA_TYPE_PIC) {
+                        startIndex = scanIndex + 3;
+                    }
+                    if (bufferList.get(scanIndex + 1) == WPProtocol.DATA_END_1 &&
+                            bufferList.get(scanIndex + 2) == WPProtocol.DATA_END_2) {
+                        stopIndex = scanIndex;
+                    }
+                }
+
+                if (startIndex < stopIndex && startIndex > 0) {
+                    // we got pic data
+                    int picLen = stopIndex - startIndex + 1;
+                    byte[] picBytes = new byte[picLen];
+                    Log.d(TAG, "we got pic: len=" + picLen);
+                    for (int m = 0; m < picLen; m++) {
+                        picBytes[m] = bufferList.get(m + startIndex);
+                    }
+                    while (bufferList.size() >= (bufferCount - stopIndex + 2)) {
+                        bufferList.remove(0);
+                    }
+                    Intent in = new Intent(MSG_ONE_PIC);
+                    in.putExtra(MSG_ONE_PIC, picBytes);
+                    sendBroadcast(in);
+                } else if (startIndex >= 3 && stopIndex < startIndex) {
+                    Log.d(TAG, "we got start index but no stop index");
+                    while (bufferList.size() >= (bufferCount - startIndex + 2)) {
+                        bufferList.remove(0);
+                    }
+                } else if (startIndex == -1 && stopIndex > 0) {
+                    Log.d(TAG, "only find the stop index");
+                    while (bufferList.size() >= (bufferCount - stopIndex + 2)) {
+                        bufferList.remove(0);
+                    }
+                }
+            }
         }
     }
 

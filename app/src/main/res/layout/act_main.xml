@@ -61,6 +61,21 @@
 
         </LinearLayout>
 
+        <Button
+            android:id="@+id/goCameraActBtn"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/btn_height_1"
+            android:background="@drawable/btn_selector"
+            android:text="go camera act" />
+
+        <Button
+            android:id="@+id/sendCameraPicBtn"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/btn_height_1"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/btn_selector"
+            android:text="send camera pic" />
+
     </LinearLayout>
 
     <TextView

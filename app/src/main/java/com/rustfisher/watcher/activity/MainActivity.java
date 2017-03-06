@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -17,9 +16,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.rustfisher.watcher.R;
-import com.rustfisher.watcher.utils.LocalUtils;
 import com.rustfisher.watcher.manager.LocalDevice;
 import com.rustfisher.watcher.service.CommunicationService;
+import com.rustfisher.watcher.utils.LocalUtils;
 
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -35,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout mMsgLin;
     private Button mDisconnectBtn;
     private Button mSendMsgBtn;
+    private Button mSendCameraPicBtn;
     private EditText mClientEt;
 
     private WifiP2pManager mWifiP2pManager;
@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        LocalDevice.setSendingOutCameraView(false);
         unregisterReceiver(mBroadcastReceiver);
     }
 
@@ -70,16 +71,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void exitApp() {
+        mWifiP2pManager.removeGroup(mChannel, null);
         sendBroadcast(new Intent(CommunicationService.MSG_STOP));
     }
 
     private void initUI() {
         mClientEt = (EditText) findViewById(R.id.et);
+        mSendCameraPicBtn = (Button) findViewById(R.id.sendCameraPicBtn);
         mSendMsgBtn = (Button) findViewById(R.id.sendBtn);
         mMsgLin = (LinearLayout) findViewById(R.id.clientLin);
         mDisconnectBtn = (Button) findViewById(R.id.disconnectBtn);
         mLocalInfoTv = (TextView) findViewById(R.id.localInfoTv);
         mLogTv = (TextView) findViewById(R.id.logTv);
+
+        mSendCameraPicBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(getApplicationContext(), TransferCameraPicActivity.class));
+            }
+        });
 
         mDisconnectBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -106,6 +116,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.goCameraActBtn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(getApplicationContext(), CameraActivity.class));
+            }
+        });
+
         mSendMsgBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -113,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
                     mLocalDevice.sendMsgToGroupOwner(mClientEt.getText().toString());
                     mClientEt.setText("");
                 } else if (mLocalDevice.isGroupOwner()) {
-                    mLocalDevice.sendMsgToClient(mClientEt.getText().toString());
+                    mLocalDevice.getService().send(mClientEt.getText().toString().getBytes());
                     mClientEt.setText("");
                 }
             }

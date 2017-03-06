@@ -59,10 +59,20 @@ public final class LocalUtils {
         return true;
     }
 
-    public static void logd(byte[] bytes, int len) {
+    public static void log_d_Str(byte[] bytes, int len) {
         byte[] bytes1 = new byte[len];
         System.arraycopy(bytes, 0, bytes1, 0, len);
         Log.d(TAG, new String(bytes1));
+    }
+
+    private static StringBuilder sb = new StringBuilder();
+
+    public static void logBytes(byte[] bytes, int len) {
+        sb = new StringBuilder("] ");
+        for (int i = 0; i < len; i++) {
+            sb.append(Integer.toHexString(0xff & bytes[i])).append(" ");
+        }
+        Log.d(TAG, "[len=" + len + sb.toString());
     }
 
 }

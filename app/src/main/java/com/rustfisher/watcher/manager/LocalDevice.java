@@ -4,13 +4,11 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.util.Log;
 
+import com.rustfisher.watcher.service.CommunicationService;
 import com.rustfisher.watcher.utils.ClientTransferThread;
+import com.rustfisher.watcher.utils.WPProtocol;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-import com.rustfisher.watcher.utils.GroupOwnerTransferThread;
-import com.rustfisher.watcher.utils.WPProtocol;
 
 /**
  * Holds status
@@ -19,18 +17,36 @@ import com.rustfisher.watcher.utils.WPProtocol;
 public final class LocalDevice {
 
     private static final String TAG = "rustApp";
+    private volatile static boolean sendingOutCameraView = false;
     private static LocalDevice instance = new LocalDevice();
     private volatile static String clientIPAddress;
     private volatile WifiP2pDevice mDevice;
     private volatile WifiP2pInfo wifiP2pInfo;
     private PART myPart;
     private ClientTransferThread mClientTransferThread;
-    private GroupOwnerTransferThread mGroupOwnerTransferThread;
     private static String localIPAddress = "192.168.0.1";
 
     private LocalDevice() {
         mDevice = new WifiP2pDevice();
         myPart = PART.WATCHER;
+    }
+
+    private CommunicationService service;
+
+    public CommunicationService getService() {
+        return service;
+    }
+
+    public void setService(CommunicationService service) {
+        this.service = service;
+    }
+
+    public synchronized static boolean isSendingOutCameraView() {
+        return sendingOutCameraView;
+    }
+
+    public synchronized static void setSendingOutCameraView(boolean s) {
+        LocalDevice.sendingOutCameraView = s;
     }
 
     public void setMyPart(PART myPart) {
@@ -114,43 +130,29 @@ public final class LocalDevice {
 
     public void sendMsgToGroupOwner(String msg) {
         if (null != mClientTransferThread) {
+            mClientTransferThread.send(msg.getBytes());
+        } else {
+            Log.e(TAG, "mClientTransferThread is NULL");
+        }
+    }
+
+    public void sendMsgToGroupOwner(byte[] msg) {
+        if (null != mClientTransferThread) {
             mClientTransferThread.send(msg);
         } else {
             Log.e(TAG, "mClientTransferThread is NULL");
         }
     }
 
-    // As a group owner, I can find the client when I know the address.
-    public void startGroupOwnerTransferThread() {
-        try {
-            if (null == mGroupOwnerTransferThread) {
-                byte[] addressBytes = IpStr2Bytes(clientIPAddress);
-                mGroupOwnerTransferThread = new GroupOwnerTransferThread(InetAddress.getByAddress(addressBytes));
-                mGroupOwnerTransferThread.start();
-            }
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-            Log.e(TAG, "Can not get the client address, startGroupOwnerTransferThread fail! ", e.getCause());
-        }
-    }
-
-    public void stopGroupOwnerTransferThread() {
-        if (null != mGroupOwnerTransferThread) {
-            mGroupOwnerTransferThread.closeThread();
-            mGroupOwnerTransferThread = null;
-        }
-    }
-
-    public void sendMsgToClient(String msg) {
-        if (null != mGroupOwnerTransferThread) {
-            mGroupOwnerTransferThread.send(msg);
-        } else {
-            Log.e(TAG, "Can not send msg, null == mGroupOwnerTransferThread");
-        }
+    public void exitDevice() {
+        stopClientTransferThread();
     }
 
     public static boolean isAddressCMD(byte[] cmd, int len) {
         if (null == cmd) {
+            return false;
+        }
+        if (len > 52) {
             return false;
         }
         byte[] input = new byte[len];

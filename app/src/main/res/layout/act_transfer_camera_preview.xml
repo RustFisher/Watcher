@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="@color/colorPrimary"
+        android:gravity="center"
+        android:text="Transfer Camera Previews"
+        android:textColor="@android:color/white"
+        android:textSize="20sp" />
+
+    <TextView
+        android:id="@+id/transferStatusTv"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:text="Transfer Camera Previews"
+        android:textColor="@android:color/black"
+        android:textSize="20sp" />
+
+    <Button
+        android:id="@+id/sendPicBtn"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/btn_height_1"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/btn_selector"
+        android:text="send camera pic" />
+
+    <Button
+        android:id="@+id/stopSendPicBtn"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/btn_height_1"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/btn_selector"
+        android:text="stop" />
+
+    <Button
+        android:id="@+id/sendBtn"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/btn_height_1"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/btn_selector"
+        android:text="send picture" />
+
+    <ImageView
+        android:id="@+id/picIv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</LinearLayout>

@@ -5,6 +5,7 @@ import android.util.Log;
 import com.rustfisher.watcher.manager.LocalDevice;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -19,18 +20,23 @@ public class ClientTransferThread extends Thread {
     private static final int SOCKET_TIMEOUT = 5000;
 
     private InetAddress host;
-    private String msg = "Hello from the outside";
+    private byte[] msg = "Hello from the client".getBytes();
     private boolean mmRunning;
-    private boolean mmIsPause;
+    private OutputStream os;
 
     public ClientTransferThread(InetAddress hostAddress) {
         this.host = hostAddress;
         mmRunning = true;
     }
 
-    public void send(String msg) {
+    public void send(byte[] msg) {
         this.msg = msg;
-        resumeThread();
+        try {
+            os.write(msg);
+            os.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -43,43 +49,39 @@ public class ClientTransferThread extends Thread {
             socket.connect((new InetSocketAddress(host, AppConfigs.PORT_GROUP_OWNER)), SOCKET_TIMEOUT);
             Log.d(TAG, "Client socket is connected: " + socket.isConnected());
             if (socket.isConnected()) {
-                OutputStream os = socket.getOutputStream();
+                os = socket.getOutputStream();
                 os.write((WPProtocol.MY_IP_ADDRESS + "#" + LocalDevice.getLocalIPAddress()).getBytes());
-                pauseThread();
-                while (mmRunning && !isInterrupted()) {
-                    if (!mmIsPause) {
-                        os.write(msg.getBytes());
-                        os.flush();
-                        pauseThread();
-                    } else {
-                        onThreadWait();
+                InputStream is = socket.getInputStream();
+                while (!isInterrupted() && mmRunning) {
+                    byte[] buffer = new byte[1000];
+                    int readCount = is.read(buffer);
+                    if (readCount > 0) {
+                        Log.d(TAG, "ClientTransferThread run: readCount=" + readCount);
+//                        boolean isAddressCMD = LocalDevice.isAddressCMD(buffer, readCount);
+//                        if (isAddressCMD) {
+//                            // Receive a client address, now start new a socket to the client
+//                            LocalDevice.getInstance().startGroupOwnerTransferThread();
+//                            LocalUtils.log_d_Str(buffer, readCount);
+//                        } else {
+//                        }
+
                     }
                 }
+//                while (mmRunning && !isInterrupted()) {
+//                    if (!mmIsPause) {
+//                        os.write(msg);
+//                        os.flush();
+//                        pauseThread();
+//                    } else {
+//                        onThreadWait();
+//                    }
+//                }
             }
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
         Log.d(TAG, getId() + " ClientTransferThread exits.");
-    }
-
-    public synchronized void pauseThread() {
-        mmIsPause = true;
-    }
-
-    private void onThreadWait() {
-        try {
-            synchronized (this) {
-                this.wait();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public synchronized void resumeThread() {
-        mmIsPause = false;
-        this.notify();
     }
 
     public synchronized void closeThread() {

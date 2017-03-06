@@ -6,5 +6,4 @@ package com.rustfisher.watcher.utils;
  */
 public final class AppConfigs {
     public static final int PORT_GROUP_OWNER = 8988;
-    public static final int PORT_CLIENT = 8989;
 }

@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.rustfisher.watcher">
 
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
+
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
@@ -26,6 +31,14 @@
 
         <activity
             android:name=".activity.DeviceListActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activity.CameraActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activity.TransferCameraPicActivity"
             android:screenOrientation="portrait" />
 
         <service android:name=".service.CommunicationService" />

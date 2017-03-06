@@ -9,6 +9,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 public final class LocalUtils {
 
@@ -72,7 +73,16 @@ public final class LocalUtils {
         for (int i = 0; i < len; i++) {
             sb.append(Integer.toHexString(0xff & bytes[i])).append(" ");
         }
-        Log.d(TAG, "[len=" + len + sb.toString());
+        Log.d(TAG, "[arr len=" + len + sb.toString());
+    }
+
+    public static void logList(ArrayList<Byte> list) {
+        sb = new StringBuilder("] ");
+        int count = list.size();
+        for (int i = 0; i < count; i++) {
+            sb.append(Integer.toHexString(0xff & list.get(i))).append(" ");
+        }
+        Log.d(TAG, "[list len=" + count + sb.toString());
     }
 
 }

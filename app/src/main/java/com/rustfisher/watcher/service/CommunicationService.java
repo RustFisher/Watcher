@@ -43,7 +43,6 @@ public class CommunicationService extends Service {
     private LocalDevice mLocalDevice = LocalDevice.getInstance();
 
     private ReceiveSocketThread mGroupOwnerThread;
-    private ReceiveSocketThread mClientThread;
 
     @Nullable
     @Override
@@ -108,14 +107,6 @@ public class CommunicationService extends Service {
     private void stopAllSocketThread() {
         mLocalDevice.stopClientTransferThread();
         stopGroupOwnerThread();
-        stopClientThread();
-    }
-
-    private void stopClientThread() {
-        if (null != mClientThread) {
-            mClientThread.interrupt();
-            mClientThread = null;
-        }
     }
 
     private void stopGroupOwnerThread() {
@@ -149,8 +140,7 @@ public class CommunicationService extends Service {
      * Receive data via socket.
      */
     class ReceiveSocketThread extends Thread {
-        //        private static final int CAMERA_ONE_PIC_LEN = 7554;
-        private static final int CAMERA_ONE_PIC_LEN = 7;
+        private static final int CAMERA_ONE_PIC_LEN = 3000; //
         private volatile boolean running = true;
         private ServerSocket serverSocket;
         private final int port;
@@ -202,7 +192,6 @@ public class CommunicationService extends Service {
                     byte[] buffer = new byte[CAMERA_ONE_PIC_LEN + WPProtocol.DATA_HEAD_CAMERA.length];
                     int readCount = inputstream.read(buffer);
                     if (readCount > 0) {
-                        Log.d(TAG, " read count = " + readCount);
                         arrangeDataBuffer(buffer, readCount);
                     }
                 }
@@ -226,6 +215,7 @@ public class CommunicationService extends Service {
 
         private void arrangeDataBuffer(byte[] buffer, int readCount) {
             Log.d(TAG, "arrangeDataBuffer: read count=" + readCount);
+            LocalUtils.logBytes(buffer, readCount);
             for (int i = 0; i < readCount; i++) {
                 bufferList.add(buffer[i]);
             }
@@ -234,18 +224,19 @@ public class CommunicationService extends Service {
                 int bufferCount = bufferList.size();
                 int startIndex = -1;
                 int stopIndex = -1;
-                for (int scanIndex = 0; scanIndex < bufferCount - 3; scanIndex++) {
+                LocalUtils.logList(bufferList);
+                for (int scanIndex = 0; scanIndex <= bufferCount - 3; scanIndex++) {
                     if (bufferList.get(scanIndex) == WPProtocol.DATA_HEAD_1 &&
                             bufferList.get(scanIndex + 1) == WPProtocol.DATA_HEAD_2 &&
                             bufferList.get(scanIndex + 2) == WPProtocol.DATA_TYPE_PIC) {
                         startIndex = scanIndex + 3;
                     }
-                    if (bufferList.get(scanIndex + 1) == WPProtocol.DATA_END_1 &&
-                            bufferList.get(scanIndex + 2) == WPProtocol.DATA_END_2) {
-                        stopIndex = scanIndex;
+                    if (bufferList.get(scanIndex) == WPProtocol.DATA_END_1 &&
+                            bufferList.get(scanIndex + 1) == WPProtocol.DATA_END_2 &&
+                            bufferList.get(scanIndex + 2) == WPProtocol.DATA_END_3) {
+                        stopIndex = scanIndex - 1;
                     }
                 }
-
                 if (startIndex < stopIndex && startIndex > 0) {
                     // we got pic data
                     int picLen = stopIndex - startIndex + 1;
@@ -261,8 +252,8 @@ public class CommunicationService extends Service {
                     in.putExtra(MSG_ONE_PIC, picBytes);
                     sendBroadcast(in);
                 } else if (startIndex >= 3 && stopIndex < startIndex) {
-                    Log.d(TAG, "we got start index but no stop index");
-                    while (bufferList.size() >= (bufferCount - startIndex + 2)) {
+                    Log.d(TAG, "we got start index but no stop index. start index " + startIndex);
+                    while (bufferList.size() >= (bufferCount - startIndex + 4)) {
                         bufferList.remove(0);
                     }
                 } else if (startIndex == -1 && stopIndex > 0) {
@@ -270,7 +261,18 @@ public class CommunicationService extends Service {
                     while (bufferList.size() >= (bufferCount - stopIndex + 2)) {
                         bufferList.remove(0);
                     }
+                } else {
+                    // we got nothing
+                    Log.d(TAG, "got nothing, clear buffer");
+                    byte f1 = bufferList.get(bufferCount - 3);
+                    byte f2 = bufferList.get(bufferCount - 2);
+                    byte f3 = bufferList.get(bufferCount - 1);
+                    bufferList.clear();
+                    bufferList.add(f1);
+                    bufferList.add(f2);
+                    bufferList.add(f3);
                 }
+                LocalUtils.logList(bufferList);
             }
         }
     }

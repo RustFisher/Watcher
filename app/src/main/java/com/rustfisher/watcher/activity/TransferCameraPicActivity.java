@@ -47,7 +47,6 @@ public class TransferCameraPicActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        mCamera.startPreview();
         updateUI();
     }
 
@@ -93,8 +92,8 @@ public class TransferCameraPicActivity extends Activity {
                 bt.compress(Bitmap.CompressFormat.PNG, 100, bAos);
                 if (mLocalDevice.isClient()) {
                     mLocalDevice.sendMsgToGroupOwner(WPProtocol.DATA_HEAD_ONE_PIC);
-//                    mLocalDevice.sendMsgToGroupOwner(bAos.toByteArray());
-                    mLocalDevice.sendMsgToGroupOwner(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0});
+//                    mLocalDevice.sendMsgToGroupOwner(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0});
+                    mLocalDevice.sendMsgToGroupOwner(bAos.toByteArray());
                     mLocalDevice.sendMsgToGroupOwner(WPProtocol.DATA_END);
                 } else if (mLocalDevice.isGroupOwner()) {
                     mLocalDevice.getService().send(WPProtocol.DATA_HEAD_ONE_PIC);
@@ -116,7 +115,7 @@ public class TransferCameraPicActivity extends Activity {
                 public void onPreviewFrame(byte[] data, Camera camera) {
                     mSendCount++;
                     if (mSendCount >= 10) {
-                        Log.d(TAG, "onPreviewFrame: " + data.length);
+                        Log.d(TAG, "mCamera onPreviewFrame: " + data.length);
                         mSendCount = 0;
                         if (LocalDevice.isSendingOutCameraView()) {
                             if (mLocalDevice.isClient()) {

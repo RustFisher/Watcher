@@ -45,6 +45,14 @@
         android:background="@drawable/btn_selector"
         android:text="send picture" />
 
+    <Button
+        android:id="@+id/sendImageBtn"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/btn_height_1"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/btn_selector"
+        android:text="send image" />
+
     <ImageView
         android:id="@+id/picIv"
         android:layout_width="match_parent"

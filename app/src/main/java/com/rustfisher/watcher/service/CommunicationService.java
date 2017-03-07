@@ -26,6 +26,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /**
  * Hold some service
@@ -37,6 +38,7 @@ public class CommunicationService extends Service {
 
     public static final String MSG_STOP = "com.rustfisher.stop_CommunicationService";
     public static final String MSG_ONE_PIC = "com.rustfisher.MSG_ONE_PIC";
+    public static final String MSG_ONE_STR = "com.rustfisher.msg_one_str";
 
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
@@ -140,7 +142,6 @@ public class CommunicationService extends Service {
      * Receive data via socket.
      */
     class ReceiveSocketThread extends Thread {
-        private static final int CAMERA_ONE_PIC_LEN = 3000; //
         private volatile boolean running = true;
         private ServerSocket serverSocket;
         private final int port;
@@ -189,7 +190,7 @@ public class CommunicationService extends Service {
                 inputstream = client.getInputStream();
                 outputStream = client.getOutputStream();
                 while (!isInterrupted() && running) {
-                    byte[] buffer = new byte[CAMERA_ONE_PIC_LEN + WPProtocol.DATA_HEAD_CAMERA.length];
+                    byte[] buffer = new byte[WPProtocol.BASE_ONE_PACKAGE_DATA_LEN + WPProtocol.DATA_HEAD_PNG.length + WPProtocol.DATA_END.length];
                     int readCount = inputstream.read(buffer);
                     if (readCount > 0) {
                         arrangeDataBuffer(buffer, readCount);
@@ -215,52 +216,94 @@ public class CommunicationService extends Service {
 
         private void arrangeDataBuffer(byte[] buffer, int readCount) {
             Log.d(TAG, "arrangeDataBuffer: read count=" + readCount);
-            LocalUtils.logBytes(buffer, readCount);
+//            LocalUtils.logBytes(buffer, readCount);
             for (int i = 0; i < readCount; i++) {
                 bufferList.add(buffer[i]);
             }
-            for (int i = 0; i < bufferList.size() && (bufferList.size() >= (CAMERA_ONE_PIC_LEN + WPProtocol.DATA_HEAD_ONE_PIC.length + WPProtocol.DATA_END.length)); i++) {
+            final int baseDataLen = WPProtocol.BASE_ONE_PACKAGE_DATA_LEN;
+            for (int i = 0; i < bufferList.size() && (bufferList.size() >= (baseDataLen + WPProtocol.DATA_HEAD_PNG.length + WPProtocol.DATA_END.length)); i++) {
                 // scan the buffer list
                 int bufferCount = bufferList.size();
                 int startIndex = -1;
                 int stopIndex = -1;
-                LocalUtils.logList(bufferList);
+                int msgType = -1;
+//                LocalUtils.logList(bufferList);
+                boolean foundStart = false;
+                boolean foundEnd = false;
                 for (int scanIndex = 0; scanIndex <= bufferCount - 3; scanIndex++) {
-                    if (bufferList.get(scanIndex) == WPProtocol.DATA_HEAD_1 &&
-                            bufferList.get(scanIndex + 1) == WPProtocol.DATA_HEAD_2 &&
-                            bufferList.get(scanIndex + 2) == WPProtocol.DATA_TYPE_PIC) {
-                        startIndex = scanIndex + 3;
+                    if (!foundStart) {
+                        if (bufferList.get(scanIndex) == WPProtocol.DATA_HEAD_1 &&
+                                bufferList.get(scanIndex + 1) == WPProtocol.DATA_HEAD_2) {
+                            if (bufferList.get(scanIndex + 2) == WPProtocol.DATA_TYPE_PIC) {
+                                foundStart = true;
+                                msgType = WPProtocol.DATA_TYPE_PIC;
+                                startIndex = scanIndex + 3;
+                            } else if (bufferList.get(scanIndex + 2) == WPProtocol.DATA_TYPE_STR) {
+                                foundStart = true;
+                                msgType = WPProtocol.DATA_TYPE_STR;
+                                startIndex = scanIndex + 3;
+                            }
+                        }
                     }
-                    if (bufferList.get(scanIndex) == WPProtocol.DATA_END_1 &&
-                            bufferList.get(scanIndex + 1) == WPProtocol.DATA_END_2 &&
-                            bufferList.get(scanIndex + 2) == WPProtocol.DATA_END_3) {
-                        stopIndex = scanIndex - 1;
+                    if (!foundEnd) {
+                        if (bufferList.get(scanIndex) == WPProtocol.DATA_END_1 &&
+                                bufferList.get(scanIndex + 1) == WPProtocol.DATA_END_2 &&
+                                bufferList.get(scanIndex + 2) == WPProtocol.DATA_END_3) {
+                            stopIndex = scanIndex - 1;
+                            foundEnd = true;
+                        }
                     }
                 }
                 if (startIndex < stopIndex && startIndex > 0) {
-                    // we got pic data
-                    int picLen = stopIndex - startIndex + 1;
-                    byte[] picBytes = new byte[picLen];
-                    Log.d(TAG, "we got pic: len=" + picLen);
-                    for (int m = 0; m < picLen; m++) {
-                        picBytes[m] = bufferList.get(m + startIndex);
+                    int dataLen = stopIndex - startIndex + 1;
+                    byte[] dataBytes = new byte[dataLen];
+                    Log.d(TAG, String.format(Locale.ENGLISH, "we got len=%d , bufferCount = %d, [%d, %d]",
+                            dataLen, bufferCount, startIndex, stopIndex));
+                    for (int m = 0; m < dataLen; m++) {
+                        dataBytes[m] = bufferList.get(m + startIndex);
                     }
-                    while (bufferList.size() >= (bufferCount - stopIndex + 2)) {
-                        bufferList.remove(0);
+
+                    int leftDataCount = bufferCount - stopIndex - WPProtocol.DATA_END_LEN;
+                    if (leftDataCount <= 0) {
+                        bufferList.clear();
+                    } else {
+                        ArrayList<Byte> leftList = new ArrayList<>();
+                        for (int add_i = 0; add_i < leftDataCount; add_i++) {
+                            leftList.add(bufferList.get(bufferCount - leftDataCount + add_i));
+                        }
+                        bufferList = new ArrayList<>(leftList);
                     }
-                    Intent in = new Intent(MSG_ONE_PIC);
-                    in.putExtra(MSG_ONE_PIC, picBytes);
-                    sendBroadcast(in);
+//                    while (bufferList.size() >= (bufferCount - stopIndex - 3)) {
+//                        bufferList.remove(0);
+//                    }
+
+                    Log.d(TAG, "got one pic, then list size == " + bufferList.size());
+                    switch (msgType) {
+                        case WPProtocol.DATA_TYPE_PIC:
+                            LocalDevice.setOnePicData(dataBytes);
+                            Intent in = new Intent(MSG_ONE_PIC);
+                            sendBroadcast(in);
+                            break;
+                        case WPProtocol.DATA_TYPE_STR:
+                            Intent inStr = new Intent(MSG_ONE_STR);
+                            String msg = new String(dataBytes);
+                            Log.d(TAG, "msg = " + msg);
+                            inStr.putExtra(MSG_ONE_STR, msg);
+                            sendBroadcast(inStr);
+                            break;
+                    }
                 } else if (startIndex >= 3 && stopIndex < startIndex) {
                     Log.d(TAG, "we got start index but no stop index. start index " + startIndex);
                     while (bufferList.size() >= (bufferCount - startIndex + 4)) {
                         bufferList.remove(0);
                     }
+                    break;
                 } else if (startIndex == -1 && stopIndex > 0) {
                     Log.d(TAG, "only find the stop index");
                     while (bufferList.size() >= (bufferCount - stopIndex + 2)) {
                         bufferList.remove(0);
                     }
+                    break;
                 } else {
                     // we got nothing
                     Log.d(TAG, "got nothing, clear buffer");
@@ -272,7 +315,7 @@ public class CommunicationService extends Service {
                     bufferList.add(f2);
                     bufferList.add(f3);
                 }
-                LocalUtils.logList(bufferList);
+//                LocalUtils.logList(bufferList);
             }
         }
     }

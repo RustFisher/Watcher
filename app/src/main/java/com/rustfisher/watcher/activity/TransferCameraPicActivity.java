@@ -7,6 +7,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Camera;
 import android.os.Bundle;
@@ -19,7 +22,6 @@ import android.widget.TextView;
 import com.rustfisher.watcher.R;
 import com.rustfisher.watcher.manager.LocalDevice;
 import com.rustfisher.watcher.service.CommunicationService;
-import com.rustfisher.watcher.utils.WPProtocol;
 
 import java.io.ByteArrayOutputStream;
 
@@ -90,17 +92,14 @@ public class TransferCameraPicActivity extends Activity {
                 Bitmap bt = drawable.getBitmap();
                 ByteArrayOutputStream bAos = new ByteArrayOutputStream();
                 bt.compress(Bitmap.CompressFormat.PNG, 100, bAos);
-                if (mLocalDevice.isClient()) {
-                    mLocalDevice.sendMsgToGroupOwner(WPProtocol.DATA_HEAD_ONE_PIC);
-//                    mLocalDevice.sendMsgToGroupOwner(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0});
-                    mLocalDevice.sendMsgToGroupOwner(bAos.toByteArray());
-                    mLocalDevice.sendMsgToGroupOwner(WPProtocol.DATA_END);
-                } else if (mLocalDevice.isGroupOwner()) {
-                    mLocalDevice.getService().send(WPProtocol.DATA_HEAD_ONE_PIC);
-//                    mLocalDevice.sendMsgToClient(bAos.toByteArray());
-                    mLocalDevice.getService().send(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 0});
-                    mLocalDevice.getService().send(WPProtocol.DATA_END);
-                }
+                mLocalDevice.sendPNGOut(bAos.toByteArray());
+            }
+        });
+
+        findViewById(R.id.sendImageBtn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
             }
         });
     }
@@ -114,17 +113,11 @@ public class TransferCameraPicActivity extends Activity {
                 @Override
                 public void onPreviewFrame(byte[] data, Camera camera) {
                     mSendCount++;
-                    if (mSendCount >= 10) {
+                    if (mSendCount >= 100) {
                         Log.d(TAG, "mCamera onPreviewFrame: " + data.length);
                         mSendCount = 0;
                         if (LocalDevice.isSendingOutCameraView()) {
-                            if (mLocalDevice.isClient()) {
-                                mLocalDevice.sendMsgToGroupOwner(WPProtocol.DATA_HEAD_CAMERA);
-                                mLocalDevice.sendMsgToGroupOwner(data);
-                            } else if (mLocalDevice.isGroupOwner()) {
-                                mLocalDevice.getService().send(WPProtocol.DATA_HEAD_CAMERA);
-                                mLocalDevice.getService().send(data);
-                            }
+                            mLocalDevice.sendPNGOut(data);
                         }
                     }
                 }
@@ -146,6 +139,10 @@ public class TransferCameraPicActivity extends Activity {
         Camera camera = null;
         try {
             camera = Camera.open();
+//            Camera.Parameters parameters = camera.getParameters();
+//            parameters.setPreviewFormat(ImageFormat.JPEG);
+//            parameters.setPictureSize(200, 200);
+//            camera.setParameters(parameters);
         } catch (Exception e) {
             Log.e(TAG, "getCamera fail: ", e);
             e.printStackTrace();
@@ -167,12 +164,25 @@ public class TransferCameraPicActivity extends Activity {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (CommunicationService.MSG_ONE_PIC.equals(action)) {
-                byte[] picArr = intent.getByteArrayExtra(CommunicationService.MSG_ONE_PIC);
+                byte[] picArr = LocalDevice.getOnePicData();
                 if (null != picArr) {
-                    Log.d(TAG, "onReceive one pic");
+                    Log.d(TAG, "onReceive one pic, len=" + picArr.length);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(picArr, 0, picArr.length);
                     mPicIv.setImageBitmap(bitmap);
                 }
+//                try {
+//                    YuvImage image = new YuvImage(picArr, ImageFormat.NV21, 200, 200, null);
+//                    if (image != null) {
+//                        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//                        image.compressToJpeg(new Rect(0, 0, 200, 200), 80, stream);
+//                        Bitmap bitmap = BitmapFactory.decodeByteArray(stream.toByteArray(), 0, stream.size());
+//                        mPicIv.setImageBitmap(bitmap);
+//                        stream.close();
+//                    }
+//                } catch (Exception ex) {
+//                    Log.e("Sys", "Error:" + ex.getMessage());
+//                }
+
             }
         }
     };

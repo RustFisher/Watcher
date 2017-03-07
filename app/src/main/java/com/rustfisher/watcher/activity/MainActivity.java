@@ -3,11 +3,13 @@ package com.rustfisher.watcher.activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -53,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         registerReceiver(mBroadcastReceiver, LocalUtils.makeWiFiP2pIntentFilter());
+        registerReceiver(mBroadcastReceiver, new IntentFilter(CommunicationService.MSG_ONE_STR));
         mMsgLin.setVisibility(LocalDevice.getInstance().isClient() ? View.VISIBLE : View.INVISIBLE);
     }
 
@@ -126,13 +129,8 @@ public class MainActivity extends AppCompatActivity {
         mSendMsgBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mLocalDevice.isClient()) {
-                    mLocalDevice.sendMsgToGroupOwner(mClientEt.getText().toString());
-                    mClientEt.setText("");
-                } else if (mLocalDevice.isGroupOwner()) {
-                    mLocalDevice.getService().send(mClientEt.getText().toString().getBytes());
-                    mClientEt.setText("");
-                }
+                mLocalDevice.sendStringMsg(mClientEt.getText().toString());
+                mClientEt.setText("");
             }
         });
     }
@@ -176,6 +174,11 @@ public class MainActivity extends AppCompatActivity {
             } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
                 WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
                 updateLocalDeviceInfo(device);
+            } else if (CommunicationService.MSG_ONE_STR.equals(action)) {
+                String oneStr = intent.getStringExtra(CommunicationService.MSG_ONE_STR);
+                if (!TextUtils.isEmpty(oneStr)) {
+                    logUI(oneStr);
+                }
             }
         }
     };

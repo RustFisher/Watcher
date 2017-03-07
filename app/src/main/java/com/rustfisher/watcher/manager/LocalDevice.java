@@ -18,6 +18,7 @@ public final class LocalDevice {
 
     private static final String TAG = "rustApp";
     private volatile static boolean sendingOutCameraView = false;
+    private volatile static byte[] onePicData;
     private static LocalDevice instance = new LocalDevice();
     private volatile static String clientIPAddress;
     private volatile WifiP2pDevice mDevice;
@@ -39,6 +40,14 @@ public final class LocalDevice {
 
     public void setService(CommunicationService service) {
         this.service = service;
+    }
+
+    public static byte[] getOnePicData() {
+        return onePicData;
+    }
+
+    public static void setOnePicData(byte[] onePicData) {
+        LocalDevice.onePicData = onePicData;
     }
 
     public synchronized static boolean isSendingOutCameraView() {
@@ -141,6 +150,30 @@ public final class LocalDevice {
             mClientTransferThread.send(msg);
         } else {
             Log.e(TAG, "mClientTransferThread is NULL");
+        }
+    }
+
+    public void sendPNGOut(byte[] picData) {
+        if (isClient()) {
+            sendMsgToGroupOwner(WPProtocol.DATA_HEAD_PNG);
+            sendMsgToGroupOwner(picData);
+            sendMsgToGroupOwner(WPProtocol.DATA_END);
+        } else if (isGroupOwner()) {
+            getService().send(WPProtocol.DATA_HEAD_PNG);
+            getService().send(picData);
+            getService().send(WPProtocol.DATA_END);
+        }
+    }
+
+    public void sendStringMsg(String msg) {
+        if (isClient()) {
+            sendMsgToGroupOwner(WPProtocol.DATA_HEAD_STR);
+            sendMsgToGroupOwner(msg);
+            sendMsgToGroupOwner(WPProtocol.DATA_END);
+        } else if (isGroupOwner()) {
+            getService().send(WPProtocol.DATA_HEAD_STR);
+            getService().send(msg.getBytes());
+            getService().send(WPProtocol.DATA_END);
         }
     }
 

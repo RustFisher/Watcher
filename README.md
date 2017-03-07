@@ -2,6 +2,11 @@
 
 Android Wifi p2p
 
-Now we can send msg from client to group owner.
+We can not do everything via only one socket. So we only send image.
 
-And we can send msg from group owner to client.
+Client can send a PNG to group owner.
+
+### TODO
+* Upgrade protocol.
+* Client send any image to group owner.
+* Group owner can send any image to client.

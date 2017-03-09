@@ -13,9 +13,9 @@
         android:textColor="@android:color/white"
         android:textSize="20sp" />
 
-    <FrameLayout
-        android:id="@+id/cameraContainer"
+    <SurfaceView
+        android:id="@+id/cameraSView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent" />
 
 </LinearLayout>

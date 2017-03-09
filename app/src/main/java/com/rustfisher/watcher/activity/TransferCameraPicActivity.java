@@ -117,7 +117,7 @@ public class TransferCameraPicActivity extends Activity {
                         Log.d(TAG, "mCamera onPreviewFrame: " + data.length);
                         mSendCount = 0;
                         if (LocalDevice.isSendingOutCameraView()) {
-                            mLocalDevice.sendPNGOut(data);
+//                            mLocalDevice.sendPNGOut(data);
                         }
                     }
                 }

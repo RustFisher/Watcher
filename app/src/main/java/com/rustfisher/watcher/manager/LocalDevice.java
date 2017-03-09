@@ -4,6 +4,7 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.util.Log;
 
+import com.rustfisher.watcher.beans.MsgBean;
 import com.rustfisher.watcher.service.CommunicationService;
 import com.rustfisher.watcher.utils.ClientTransferThread;
 import com.rustfisher.watcher.utils.WPProtocol;
@@ -137,39 +138,24 @@ public final class LocalDevice {
         }
     }
 
-    public void sendMsgToGroupOwner(String msg) {
+    public void sendMsgBeanToGroupOwner(MsgBean bean) {
         if (null != mClientTransferThread) {
-            mClientTransferThread.send(msg.getBytes());
+            mClientTransferThread.sendMsgBean(bean);
         } else {
-            Log.e(TAG, "mClientTransferThread is NULL");
-        }
-    }
-
-    public void sendMsgToGroupOwner(byte[] msg) {
-        if (null != mClientTransferThread) {
-            mClientTransferThread.send(msg);
-        } else {
-            Log.e(TAG, "mClientTransferThread is NULL");
+            Log.e(TAG, "fail. mClientTransferThread is NULL");
         }
     }
 
     public void sendPNGOut(byte[] picData) {
         if (isClient()) {
-            sendMsgToGroupOwner(WPProtocol.DATA_HEAD_PNG);
-            sendMsgToGroupOwner(picData);
-            sendMsgToGroupOwner(WPProtocol.DATA_END);
+            sendMsgBeanToGroupOwner(new MsgBean(picData, MsgBean.TYPE_PNG));
         } else if (isGroupOwner()) {
-            getService().send(WPProtocol.DATA_HEAD_PNG);
-            getService().send(picData);
-            getService().send(WPProtocol.DATA_END);
         }
     }
 
     public void sendStringMsg(String msg) {
         if (isClient()) {
-            sendMsgToGroupOwner(WPProtocol.DATA_HEAD_STR);
-            sendMsgToGroupOwner(msg);
-            sendMsgToGroupOwner(WPProtocol.DATA_END);
+            sendMsgBeanToGroupOwner(new MsgBean(msg));
         } else if (isGroupOwner()) {
             getService().send(WPProtocol.DATA_HEAD_STR);
             getService().send(msg.getBytes());

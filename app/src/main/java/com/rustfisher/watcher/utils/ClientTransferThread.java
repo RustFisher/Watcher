@@ -2,10 +2,12 @@ package com.rustfisher.watcher.utils;
 
 import android.util.Log;
 
+import com.rustfisher.watcher.beans.MsgBean;
 import com.rustfisher.watcher.manager.LocalDevice;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -20,22 +22,22 @@ public class ClientTransferThread extends Thread {
     private static final int SOCKET_TIMEOUT = 5000;
 
     private InetAddress host;
-    private byte[] msg = "Hello from the client".getBytes();
     private boolean mmRunning;
     private OutputStream os;
+    private ObjectOutputStream oos;
 
     public ClientTransferThread(InetAddress hostAddress) {
         this.host = hostAddress;
         mmRunning = true;
     }
 
-    public void send(byte[] msg) {
-        this.msg = msg;
+    public void sendMsgBean(MsgBean bean) {
         try {
-            os.write(msg);
-            os.flush();
+            oos.writeObject(bean);
+            oos.flush();
         } catch (Exception e) {
             e.printStackTrace();
+            Log.e(TAG, "sendMsgBean: fail", e);
         }
     }
 
@@ -50,38 +52,22 @@ public class ClientTransferThread extends Thread {
             Log.d(TAG, "Client socket is connected: " + socket.isConnected());
             if (socket.isConnected()) {
                 os = socket.getOutputStream();
-                os.write((WPProtocol.MY_IP_ADDRESS + "#" + LocalDevice.getLocalIPAddress()).getBytes());
+                oos = new ObjectOutputStream(os);
                 InputStream is = socket.getInputStream();
                 while (!isInterrupted() && mmRunning) {
                     byte[] buffer = new byte[1000];
                     int readCount = is.read(buffer);
                     if (readCount > 0) {
                         Log.d(TAG, "ClientTransferThread run: readCount=" + readCount);
-//                        boolean isAddressCMD = LocalDevice.isAddressCMD(buffer, readCount);
-//                        if (isAddressCMD) {
-//                            // Receive a client address, now start new a socket to the client
-//                            LocalDevice.getInstance().startGroupOwnerTransferThread();
-//                            LocalUtils.log_d_Str(buffer, readCount);
-//                        } else {
-//                        }
 
                     }
                 }
-//                while (mmRunning && !isInterrupted()) {
-//                    if (!mmIsPause) {
-//                        os.write(msg);
-//                        os.flush();
-//                        pauseThread();
-//                    } else {
-//                        onThreadWait();
-//                    }
-//                }
             }
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Log.d(TAG, getId() + " ClientTransferThread exits.");
+        Log.e(TAG, getId() + " ClientTransferThread has stopped.");
     }
 
     public synchronized void closeThread() {

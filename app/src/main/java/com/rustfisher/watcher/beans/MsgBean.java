@@ -13,11 +13,13 @@ public final class MsgBean implements Serializable {
 
     public static final int TYPE_TEXT = 0x0001;
     public static final int TYPE_PNG = 0x0010;
+    public static final int TYPE_JPEG = 0x0100;
 
     private int types = 0;
 
     private String msg;
     private byte[] pngBytes;
+    private byte[] cameraBytes;
 
     public MsgBean(String msg) {
         this.msg = msg;
@@ -25,7 +27,12 @@ public final class MsgBean implements Serializable {
     }
 
     public MsgBean(byte[] d, int type) {
-        pngBytes = d;
+        if (TYPE_PNG == type) {
+            pngBytes = d;
+        }
+        if (TYPE_JPEG == type) {
+            cameraBytes = d;
+        }
         types |= type;
     }
 
@@ -42,11 +49,19 @@ public final class MsgBean implements Serializable {
         return this.pngBytes;
     }
 
+    public byte[] getCameraBytes() {
+        return cameraBytes;
+    }
+
     public boolean hasText() {
         return (TYPE_TEXT & types) == TYPE_TEXT;
     }
 
     public boolean hasPNG() {
         return (TYPE_PNG & types) == TYPE_PNG;
+    }
+
+    public boolean hasJPEG() {
+        return (TYPE_JPEG & types) == TYPE_JPEG;
     }
 }

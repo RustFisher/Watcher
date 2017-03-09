@@ -19,7 +19,6 @@ import com.rustfisher.watcher.beans.MsgBean;
 import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
 import com.rustfisher.watcher.manager.LocalDevice;
-import com.rustfisher.watcher.utils.WPProtocol;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +27,6 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Locale;
 
 /**
  * Hold some service
@@ -40,6 +38,7 @@ public class CommunicationService extends Service {
 
     public static final String MSG_STOP = "com.rustfisher.stop_CommunicationService";
     public static final String MSG_ONE_PIC = "com.rustfisher.MSG_ONE_PIC";
+    public static final String MSG_ONE_CAMERA = "com.rustfisher.msg_camera";
     public static final String MSG_ONE_STR = "com.rustfisher.msg_one_str";
 
     private WifiP2pManager mManager;
@@ -208,8 +207,11 @@ public class CommunicationService extends Service {
                             LocalDevice.setOnePicData(readInObj.getPNGBytes());
                             Intent in = new Intent(MSG_ONE_PIC);
                             sendBroadcast(in);
-                        } else {
-                            Log.d(TAG, "no PNG");
+                        }
+                        if (readInObj.hasJPEG()) {
+                            Intent jIntent = new Intent(MSG_ONE_CAMERA);
+                            jIntent.putExtra(MSG_ONE_CAMERA, readInObj);
+                            sendBroadcast(jIntent);
                         }
                     }
                 }

@@ -7,21 +7,23 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
+import android.graphics.PixelFormat;
 import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.rustfisher.watcher.R;
+import com.rustfisher.watcher.beans.MsgBean;
 import com.rustfisher.watcher.manager.LocalDevice;
 import com.rustfisher.watcher.service.CommunicationService;
+import com.rustfisher.watcher.utils.LocalUtils;
 
 import java.io.ByteArrayOutputStream;
 
@@ -31,12 +33,17 @@ import static com.rustfisher.watcher.activity.MainActivity.TAG;
  * Transfer camera previews
  * Created by Rust Fisher on 2017/3/6.
  */
-public class TransferCameraPicActivity extends Activity {
+public class TransferCameraPicActivity extends Activity implements SurfaceHolder.Callback {
 
     private TextView mTransferStatusTv;
     private ImageView mPicIv;
-    private Camera mCamera;
     private LocalDevice mLocalDevice = LocalDevice.getInstance();
+
+    private Camera mCamera;
+    private SurfaceView mCameraPreview;
+    private SurfaceHolder mHolder;
+    private int mCameraId = 0;
+    private boolean mSafeToTakePicture = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,25 +61,26 @@ public class TransferCameraPicActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        releaseCamera();
         super.onDestroy();
+        releaseCamera();
         unregisterReceiver(mReceiver);
     }
 
-    private void initUtils() {
-        registerReceiver(mReceiver, new IntentFilter(CommunicationService.MSG_ONE_PIC));
-    }
-
     private void initUI() {
+        mCameraPreview = (SurfaceView) findViewById(R.id.cameraView);
+        mHolder = mCameraPreview.getHolder();
+        mHolder.addCallback(this);
+        mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
         mPicIv = (ImageView) findViewById(R.id.picIv);
         mTransferStatusTv = (TextView) findViewById(R.id.transferStatusTv);
-        setCamera();
         findViewById(R.id.sendPicBtn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                LocalDevice.setSendingOutCameraView(true);
-                mCamera.startPreview();
-                updateUI();
+                if (null != mCamera && mSafeToTakePicture) {
+                    mCamera.takePicture(mShutterCallback, null, mJPEGCallback);
+                    mSafeToTakePicture = false;
+                }
             }
         });
 
@@ -80,7 +88,6 @@ public class TransferCameraPicActivity extends Activity {
             @Override
             public void onClick(View v) {
                 LocalDevice.setSendingOutCameraView(false);
-                mCamera.stopPreview();
                 updateUI();
             }
         });
@@ -96,35 +103,12 @@ public class TransferCameraPicActivity extends Activity {
             }
         });
 
-        findViewById(R.id.sendImageBtn).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
     }
 
-    int mSendCount = 0; // slow down
-
-    private void setCamera() {
-        mCamera = getCamera();
-        if (null != mCamera) {
-            mCamera.setPreviewCallback(new Camera.PreviewCallback() {
-                @Override
-                public void onPreviewFrame(byte[] data, Camera camera) {
-                    mSendCount++;
-                    if (mSendCount >= 100) {
-                        Log.d(TAG, "mCamera onPreviewFrame: " + data.length);
-                        mSendCount = 0;
-                        if (LocalDevice.isSendingOutCameraView()) {
-//                            mLocalDevice.sendPNGOut(data);
-                        }
-                    }
-                }
-            });
-        } else {
-            Log.e(TAG, "[TransferCameraPicActivity] setCamera: fail");
-        }
+    private void initUtils() {
+        mCameraId = Camera.getNumberOfCameras() - 1;
+        registerReceiver(mReceiver, new IntentFilter(CommunicationService.MSG_ONE_PIC));
+        registerReceiver(mReceiver, new IntentFilter(CommunicationService.MSG_ONE_CAMERA));
     }
 
     private void updateUI() {
@@ -132,30 +116,6 @@ public class TransferCameraPicActivity extends Activity {
             mTransferStatusTv.setText("SendingOutCameraView");
         } else {
             mTransferStatusTv.setText("Not Sending");
-        }
-    }
-
-    private Camera getCamera() {
-        Camera camera = null;
-        try {
-            camera = Camera.open();
-//            Camera.Parameters parameters = camera.getParameters();
-//            parameters.setPreviewFormat(ImageFormat.JPEG);
-//            parameters.setPictureSize(200, 200);
-//            camera.setParameters(parameters);
-        } catch (Exception e) {
-            Log.e(TAG, "getCamera fail: ", e);
-            e.printStackTrace();
-        }
-        return camera;
-    }
-
-    private void releaseCamera() {
-        if (mCamera != null) {
-            mCamera.setPreviewCallback(null);
-            mCamera.stopPreview();
-            mCamera.release();
-            mCamera = null;
         }
     }
 
@@ -170,21 +130,73 @@ public class TransferCameraPicActivity extends Activity {
                     Bitmap bitmap = BitmapFactory.decodeByteArray(picArr, 0, picArr.length);
                     mPicIv.setImageBitmap(bitmap);
                 }
-//                try {
-//                    YuvImage image = new YuvImage(picArr, ImageFormat.NV21, 200, 200, null);
-//                    if (image != null) {
-//                        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//                        image.compressToJpeg(new Rect(0, 0, 200, 200), 80, stream);
-//                        Bitmap bitmap = BitmapFactory.decodeByteArray(stream.toByteArray(), 0, stream.size());
-//                        mPicIv.setImageBitmap(bitmap);
-//                        stream.close();
-//                    }
-//                } catch (Exception ex) {
-//                    Log.e("Sys", "Error:" + ex.getMessage());
-//                }
-
+            } else if (CommunicationService.MSG_ONE_CAMERA.equals(action)) {
+                MsgBean preview = (MsgBean) intent.getSerializableExtra(CommunicationService.MSG_ONE_CAMERA);
+                byte[] jpegBytes = preview.getCameraBytes();
+                Log.d(TAG, "[act] onReceive: one JPEG.  len=" + jpegBytes.length);
+                
             }
         }
     };
 
+    private void releaseCamera() {
+        if (mCamera != null) {
+            mCamera.setPreviewCallback(null);
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
+    }
+
+    private Camera.PictureCallback mJPEGCallback = new Camera.PictureCallback() {
+
+        public void onPictureTaken(byte[] data, Camera camera) {
+            Camera.Parameters ps = camera.getParameters();
+            if (ps.getPictureFormat() == PixelFormat.JPEG) {
+                Log.d(TAG, "onPictureTaken: " + data.length);
+                mLocalDevice.sendCameraJPEG(data);
+            }
+            camera.startPreview();
+            mSafeToTakePicture = true;
+        }
+    };
+
+    private Camera.ShutterCallback mShutterCallback = new Camera.ShutterCallback() {
+        @Override
+        public void onShutter() {
+            Log.d(TAG, "onShutter");
+        }
+    };
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        if (null == mCamera) {
+            mCamera = Camera.open();
+            try {
+                mCamera.setPreviewDisplay(holder);
+                // NV21 Constant Value: 17 (0x00000011)
+                Log.d(TAG, "Camera.getParameters().getPreviewFormat() = " + mCamera.getParameters().getPreviewFormat());
+                Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+                Log.d(TAG, "previewSize " + previewSize.width + ", " + previewSize.height);
+                LocalUtils.setCameraDisplayOrientation(this, mCameraId, mCamera);
+                mCamera.startPreview();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        mCamera.stopPreview();
+        mCamera.release();
+        mCamera = null;
+        mCameraPreview = null;
+    }
 }

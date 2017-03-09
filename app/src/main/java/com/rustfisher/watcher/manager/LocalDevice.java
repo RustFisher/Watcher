@@ -146,6 +146,13 @@ public final class LocalDevice {
         }
     }
 
+    public void sendCameraJPEG(byte[] data) {
+        if (isClient()) {
+            sendMsgBeanToGroupOwner(new MsgBean(data, MsgBean.TYPE_JPEG));
+        } else if (isGroupOwner()) {
+        }
+    }
+
     public void sendPNGOut(byte[] picData) {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(picData, MsgBean.TYPE_PNG));

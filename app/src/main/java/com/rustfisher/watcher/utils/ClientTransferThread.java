@@ -1,5 +1,7 @@
 package com.rustfisher.watcher.utils;
 
+import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 
 import com.rustfisher.watcher.beans.MsgBean;
@@ -7,6 +9,7 @@ import com.rustfisher.watcher.manager.LocalDevice;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -22,13 +25,16 @@ public class ClientTransferThread extends Thread {
     private static final int SOCKET_TIMEOUT = 5000;
 
     private InetAddress host;
-    private boolean mmRunning;
+    private boolean running;
     private OutputStream os;
     private ObjectOutputStream oos;
 
-    public ClientTransferThread(InetAddress hostAddress) {
+    private Context ctx;
+
+    public ClientTransferThread(InetAddress hostAddress, Context context) {
         this.host = hostAddress;
-        mmRunning = true;
+        running = true;
+        this.ctx = context;
     }
 
     public void sendMsgBean(MsgBean bean) {
@@ -37,7 +43,7 @@ public class ClientTransferThread extends Thread {
             oos.flush();
         } catch (Exception e) {
             e.printStackTrace();
-            Log.e(TAG, "sendMsgBean: fail", e);
+            Log.e(TAG, "[Client] sendMsgBean: fail", e);
         }
     }
 
@@ -54,12 +60,30 @@ public class ClientTransferThread extends Thread {
                 os = socket.getOutputStream();
                 oos = new ObjectOutputStream(os);
                 InputStream is = socket.getInputStream();
-                while (!isInterrupted() && mmRunning) {
-                    byte[] buffer = new byte[1000];
-                    int readCount = is.read(buffer);
-                    if (readCount > 0) {
-                        Log.d(TAG, "ClientTransferThread run: readCount=" + readCount);
-
+                ObjectInputStream ois = new ObjectInputStream(is);
+                while (!isInterrupted() && running) {
+                    try {
+                        MsgBean readInObj = (MsgBean) ois.readObject();
+                        if (null != readInObj) {
+                            if (readInObj.hasText()) {
+                                Log.d(TAG, "[Client] got: " + readInObj.getMsg());
+                                Intent textIntent = new Intent(AppConfigs.MSG_ONE_STR);
+                                textIntent.putExtra(AppConfigs.MSG_ONE_STR, readInObj.getMsg());
+                                ctx.sendBroadcast(textIntent);
+                            }
+                            if (readInObj.hasPNG()) {
+                                Log.d(TAG, "[Client] got a PNG.");
+                                LocalDevice.setOnePicData(readInObj.getPNGBytes());
+                                Intent in = new Intent(AppConfigs.MSG_ONE_PIC);
+                                ctx.sendBroadcast(in);
+                            }
+                            if (readInObj.hasJPEG()) {
+                                Log.d(TAG, "[Client] got jpg");
+                                new SaveJpgThread(readInObj.getJpegBytes()).start();
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }
@@ -72,7 +96,8 @@ public class ClientTransferThread extends Thread {
 
     public synchronized void closeThread() {
         try {
-            mmRunning = false;
+            running = false;
+            ctx = null;
             notify();
             interrupt();
         } catch (Exception e) {

@@ -36,14 +36,6 @@
             android:text="send camera pic" />
 
         <Button
-            android:id="@+id/stopSendPicBtn"
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/btn_height_1"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/btn_selector"
-            android:text="stop" />
-
-        <Button
             android:id="@+id/sendBtn"
             android:layout_width="match_parent"
             android:layout_height="@dimen/btn_height_1"
@@ -55,6 +47,8 @@
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:layout_marginBottom="6dp"
+            android:layout_marginEnd="6dp"
+            android:layout_marginStart="6dp"
             android:layout_marginTop="6dp"
             android:orientation="horizontal">
 
@@ -63,7 +57,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="10"
-                android:scaleType="centerInside" />
+                android:scaleType="fitXY" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:visibility="invisible" />
 
             <SurfaceView
                 android:id="@+id/cameraView"

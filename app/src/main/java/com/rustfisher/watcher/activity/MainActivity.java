@@ -20,6 +20,7 @@ import android.widget.TextView;
 import com.rustfisher.watcher.R;
 import com.rustfisher.watcher.manager.LocalDevice;
 import com.rustfisher.watcher.service.CommunicationService;
+import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
 
 import java.net.Inet4Address;
@@ -55,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         registerReceiver(mBroadcastReceiver, LocalUtils.makeWiFiP2pIntentFilter());
-        registerReceiver(mBroadcastReceiver, new IntentFilter(CommunicationService.MSG_ONE_STR));
+        registerReceiver(mBroadcastReceiver, new IntentFilter(AppConfigs.MSG_ONE_STR));
         mMsgLin.setVisibility(LocalDevice.getInstance().isClient() ? View.VISIBLE : View.INVISIBLE);
     }
 
@@ -139,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
         startService(new Intent(getApplicationContext(), CommunicationService.class));
         mWifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mWifiP2pManager.initialize(this, getMainLooper(), null);
-        Log.d(TAG, "Main manager " + mWifiP2pManager.toString() + " MainAct mChannel: " + mChannel);
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -174,8 +174,8 @@ public class MainActivity extends AppCompatActivity {
             } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
                 WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
                 updateLocalDeviceInfo(device);
-            } else if (CommunicationService.MSG_ONE_STR.equals(action)) {
-                String oneStr = intent.getStringExtra(CommunicationService.MSG_ONE_STR);
+            } else if (AppConfigs.MSG_ONE_STR.equals(action)) {
+                String oneStr = intent.getStringExtra(AppConfigs.MSG_ONE_STR);
                 if (!TextUtils.isEmpty(oneStr)) {
                     logUI(oneStr);
                 }

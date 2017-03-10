@@ -19,7 +19,7 @@ public final class MsgBean implements Serializable {
 
     private String msg;
     private byte[] pngBytes;
-    private byte[] cameraBytes;
+    private byte[] jpegBytes;
 
     public MsgBean(String msg) {
         this.msg = msg;
@@ -31,7 +31,7 @@ public final class MsgBean implements Serializable {
             pngBytes = d;
         }
         if (TYPE_JPEG == type) {
-            cameraBytes = d;
+            jpegBytes = d;
         }
         types |= type;
     }
@@ -49,8 +49,8 @@ public final class MsgBean implements Serializable {
         return this.pngBytes;
     }
 
-    public byte[] getCameraBytes() {
-        return cameraBytes;
+    public byte[] getJpegBytes() {
+        return jpegBytes;
     }
 
     public boolean hasText() {

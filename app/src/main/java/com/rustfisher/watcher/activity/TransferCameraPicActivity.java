@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -20,12 +21,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.rustfisher.watcher.R;
-import com.rustfisher.watcher.beans.MsgBean;
 import com.rustfisher.watcher.manager.LocalDevice;
-import com.rustfisher.watcher.service.CommunicationService;
+import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 
 import static com.rustfisher.watcher.activity.MainActivity.TAG;
 
@@ -84,14 +85,6 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
             }
         });
 
-        findViewById(R.id.stopSendPicBtn).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                LocalDevice.setSendingOutCameraView(false);
-                updateUI();
-            }
-        });
-
         findViewById(R.id.sendBtn).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -107,8 +100,8 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
 
     private void initUtils() {
         mCameraId = Camera.getNumberOfCameras() - 1;
-        registerReceiver(mReceiver, new IntentFilter(CommunicationService.MSG_ONE_PIC));
-        registerReceiver(mReceiver, new IntentFilter(CommunicationService.MSG_ONE_CAMERA));
+        registerReceiver(mReceiver, new IntentFilter(AppConfigs.MSG_ONE_PIC));
+        registerReceiver(mReceiver, new IntentFilter(AppConfigs.MSG_ONE_CAMERA));
     }
 
     private void updateUI() {
@@ -123,18 +116,21 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if (CommunicationService.MSG_ONE_PIC.equals(action)) {
+            if (AppConfigs.MSG_ONE_PIC.equals(action)) {
                 byte[] picArr = LocalDevice.getOnePicData();
                 if (null != picArr) {
-                    Log.d(TAG, "onReceive one pic, len=" + picArr.length);
+                    Log.d(TAG, "[act] onReceive one pic, len=" + picArr.length);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(picArr, 0, picArr.length);
                     mPicIv.setImageBitmap(bitmap);
                 }
-            } else if (CommunicationService.MSG_ONE_CAMERA.equals(action)) {
-                MsgBean preview = (MsgBean) intent.getSerializableExtra(CommunicationService.MSG_ONE_CAMERA);
-                byte[] jpegBytes = preview.getCameraBytes();
-                Log.d(TAG, "[act] onReceive: one JPEG.  len=" + jpegBytes.length);
-                
+            } else if (AppConfigs.MSG_ONE_CAMERA.equals(action)) {
+                String jpgPath = intent.getStringExtra(AppConfigs.MSG_ONE_CAMERA);
+                Log.d(TAG, "[act] onReceive: one JPEG.  " + jpgPath);
+                File jpgFile = new File(jpgPath);
+                if (jpgFile.exists()) {
+                    Drawable d = Drawable.createFromPath(jpgPath);
+                    mPicIv.setImageDrawable(d);
+                }
             }
         }
     };

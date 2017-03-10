@@ -4,10 +4,10 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.util.Log;
 
+import com.rustfisher.watcher.WiFiApp;
 import com.rustfisher.watcher.beans.MsgBean;
 import com.rustfisher.watcher.service.CommunicationService;
 import com.rustfisher.watcher.utils.ClientTransferThread;
-import com.rustfisher.watcher.utils.WPProtocol;
 
 import java.net.InetAddress;
 
@@ -126,7 +126,8 @@ public final class LocalDevice {
     // As a client, I know the group owner address
     public void startClientTransferThread() {
         if (null == mClientTransferThread) {
-            mClientTransferThread = new ClientTransferThread(LocalDevice.getInstance().getOwnerInetAddress());
+            mClientTransferThread =
+                    new ClientTransferThread(LocalDevice.getInstance().getOwnerInetAddress(), WiFiApp.getApp().getApplicationContext());
             mClientTransferThread.start();
         }
     }
@@ -150,6 +151,7 @@ public final class LocalDevice {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(data, MsgBean.TYPE_JPEG));
         } else if (isGroupOwner()) {
+            getService().send(new MsgBean(data, MsgBean.TYPE_JPEG));
         }
     }
 
@@ -157,6 +159,7 @@ public final class LocalDevice {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(picData, MsgBean.TYPE_PNG));
         } else if (isGroupOwner()) {
+            getService().send(new MsgBean(picData, MsgBean.TYPE_PNG));
         }
     }
 
@@ -164,36 +167,12 @@ public final class LocalDevice {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(msg));
         } else if (isGroupOwner()) {
-            getService().send(WPProtocol.DATA_HEAD_STR);
-            getService().send(msg.getBytes());
-            getService().send(WPProtocol.DATA_END);
+            getService().send(new MsgBean(msg));
         }
     }
 
     public void exitDevice() {
         stopClientTransferThread();
-    }
-
-    public static boolean isAddressCMD(byte[] cmd, int len) {
-        if (null == cmd) {
-            return false;
-        }
-        if (len > 52) {
-            return false;
-        }
-        byte[] input = new byte[len];
-        System.arraycopy(cmd, 0, input, 0, len);
-        String inputStr = new String(input);
-        String[] inputCMDArr = inputStr.split("#");
-        if (inputCMDArr.length != 2) {
-            return false;
-        }
-        if (inputCMDArr[0].equals(WPProtocol.MY_IP_ADDRESS)) {
-            clientIPAddress = inputCMDArr[1]; // store client ip address
-            Log.d(TAG, "clientIPAddress =  " + clientIPAddress);
-            return true;
-        }
-        return false;
     }
 
     public static String intToIpStr(int i) {

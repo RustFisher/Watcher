@@ -16,13 +16,15 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.rustfisher.watcher.beans.MsgBean;
+import com.rustfisher.watcher.manager.LocalDevice;
 import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
-import com.rustfisher.watcher.manager.LocalDevice;
+import com.rustfisher.watcher.utils.SaveJpgThread;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -37,9 +39,6 @@ public class CommunicationService extends Service {
     private static final String TAG = "rustApp";
 
     public static final String MSG_STOP = "com.rustfisher.stop_CommunicationService";
-    public static final String MSG_ONE_PIC = "com.rustfisher.MSG_ONE_PIC";
-    public static final String MSG_ONE_CAMERA = "com.rustfisher.msg_camera";
-    public static final String MSG_ONE_STR = "com.rustfisher.msg_one_str";
 
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
@@ -119,11 +118,11 @@ public class CommunicationService extends Service {
         }
     }
 
-    public void send(byte[] msg) {
+    public void send(MsgBean msg) {
         if (mGroupOwnerThread != null) {
-            mGroupOwnerThread.send(msg);
+            mGroupOwnerThread.sendMsgBean(msg);
         } else {
-            Log.e(TAG, "send fail");
+            Log.e(TAG, "[service] send fail");
         }
     }
 
@@ -149,6 +148,7 @@ public class CommunicationService extends Service {
         private ArrayList<Byte> bufferList;
         private InputStream inputstream;
         private ObjectInputStream ois;
+        private ObjectOutputStream oos;
         private OutputStream outputStream;
 
         public ReceiveSocketThread(int port) {
@@ -157,15 +157,15 @@ public class CommunicationService extends Service {
             bufferList.ensureCapacity(10000);
         }
 
-        public void send(byte[] msg) {
-            if (null != outputStream) {
+        public void sendMsgBean(MsgBean msgBean) {
+            if (null != oos) {
                 try {
-                    outputStream.write(msg);
+                    oos.writeObject(msgBean);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             } else {
-                Log.e(TAG, "null == outputStream ");
+                Log.e(TAG, "[service] sendMsgBean: fail");
             }
         }
 
@@ -192,26 +192,26 @@ public class CommunicationService extends Service {
                 inputstream = client.getInputStream();
                 ois = new ObjectInputStream(inputstream);
                 outputStream = client.getOutputStream();
+                oos = new ObjectOutputStream(outputStream);
                 while (!isInterrupted() && running) {
 
                     MsgBean readInObj = (MsgBean) ois.readObject();
                     if (null != readInObj) {
                         if (readInObj.hasText()) {
-                            Log.d(TAG, "Server got: " + readInObj.getMsg());
-                            Intent textIntent = new Intent(MSG_ONE_STR);
-                            textIntent.putExtra(MSG_ONE_STR, readInObj.getMsg());
+                            Log.d(TAG, "[Server] got: " + readInObj.getMsg());
+                            Intent textIntent = new Intent(AppConfigs.MSG_ONE_STR);
+                            textIntent.putExtra(AppConfigs.MSG_ONE_STR, readInObj.getMsg());
                             sendBroadcast(textIntent);
                         }
                         if (readInObj.hasPNG()) {
-                            Log.d(TAG, "Server got a PNG.");
+                            Log.d(TAG, "[Server] got a PNG.");
                             LocalDevice.setOnePicData(readInObj.getPNGBytes());
-                            Intent in = new Intent(MSG_ONE_PIC);
+                            Intent in = new Intent(AppConfigs.MSG_ONE_PIC);
                             sendBroadcast(in);
                         }
                         if (readInObj.hasJPEG()) {
-                            Intent jIntent = new Intent(MSG_ONE_CAMERA);
-                            jIntent.putExtra(MSG_ONE_CAMERA, readInObj);
-                            sendBroadcast(jIntent);
+                            Log.d(TAG, "[Server] got jpg");
+                            new SaveJpgThread(readInObj.getJpegBytes()).start();
                         }
                     }
                 }

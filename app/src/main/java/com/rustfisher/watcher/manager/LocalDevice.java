@@ -18,10 +18,8 @@ import java.net.InetAddress;
 public final class LocalDevice {
 
     private static final String TAG = "rustApp";
-    private volatile static boolean sendingOutCameraView = false;
     private volatile static byte[] onePicData;
     private static LocalDevice instance = new LocalDevice();
-    private volatile static String clientIPAddress;
     private volatile WifiP2pDevice mDevice;
     private volatile WifiP2pInfo wifiP2pInfo;
     private PART myPart;
@@ -49,14 +47,6 @@ public final class LocalDevice {
 
     public static void setOnePicData(byte[] onePicData) {
         LocalDevice.onePicData = onePicData;
-    }
-
-    public synchronized static boolean isSendingOutCameraView() {
-        return sendingOutCameraView;
-    }
-
-    public synchronized static void setSendingOutCameraView(boolean s) {
-        LocalDevice.sendingOutCameraView = s;
     }
 
     public void setMyPart(PART myPart) {

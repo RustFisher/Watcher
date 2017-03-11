@@ -63,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        LocalDevice.setSendingOutCameraView(false);
         unregisterReceiver(mBroadcastReceiver);
     }
 

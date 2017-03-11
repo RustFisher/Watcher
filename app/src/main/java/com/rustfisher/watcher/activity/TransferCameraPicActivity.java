@@ -57,7 +57,6 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
     @Override
     protected void onResume() {
         super.onResume();
-        updateUI();
     }
 
     @Override
@@ -102,14 +101,6 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
         mCameraId = Camera.getNumberOfCameras() - 1;
         registerReceiver(mReceiver, new IntentFilter(AppConfigs.MSG_ONE_PIC));
         registerReceiver(mReceiver, new IntentFilter(AppConfigs.MSG_ONE_CAMERA));
-    }
-
-    private void updateUI() {
-        if (LocalDevice.isSendingOutCameraView()) {
-            mTransferStatusTv.setText("SendingOutCameraView");
-        } else {
-            mTransferStatusTv.setText("Not Sending");
-        }
     }
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {

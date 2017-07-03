@@ -53,6 +53,7 @@ public class ClientTransferThread extends Thread {
         Log.d(TAG, getId() + " ClientTransferThread runs.");
         Socket socket = new Socket();
         try {
+            Thread.sleep(1000);
             socket.bind(null);
             socket.connect((new InetSocketAddress(host, AppConfigs.PORT_GROUP_OWNER)), SOCKET_TIMEOUT);
             Log.d(TAG, "Client socket is connected: " + socket.isConnected());
@@ -88,8 +89,9 @@ public class ClientTransferThread extends Thread {
                 }
             }
             socket.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+            Log.e(TAG, "Client thread: ", e);
         }
         Log.e(TAG, getId() + " ClientTransferThread has stopped.");
     }

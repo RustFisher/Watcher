@@ -26,7 +26,7 @@ import com.rustfisher.watcher.views.DeviceListAdapter;
 import java.util.Locale;
 
 /**
- * Find device here.
+ * Find and connect Wifi p2p device here.
  * Created by Rust Fisher on 2017/3/1.
  */
 public class DeviceListActivity extends Activity {

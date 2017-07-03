@@ -57,7 +57,7 @@ public class CommunicationService extends Service {
         super.onCreate();
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
-        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = wifiManager.getConnectionInfo();
         LocalDevice.setLocalIPAddress(LocalDevice.intToIpStr(wifiInfo.getIpAddress()));
         IntentFilter intentFilter = LocalUtils.makeWiFiP2pIntentFilter();
@@ -145,7 +145,6 @@ public class CommunicationService extends Service {
         private volatile boolean running = true;
         private ServerSocket serverSocket;
         private final int port;
-        private ArrayList<Byte> bufferList;
         private InputStream inputstream;
         private ObjectInputStream ois;
         private ObjectOutputStream oos;
@@ -153,8 +152,6 @@ public class CommunicationService extends Service {
 
         public ReceiveSocketThread(int port) {
             this.port = port;
-            bufferList = new ArrayList<>();
-            bufferList.ensureCapacity(10000);
         }
 
         public void sendMsgBean(MsgBean msgBean) {
@@ -183,7 +180,7 @@ public class CommunicationService extends Service {
         @Override
         public void run() {
             super.run();
-            Log.d(TAG, "Receive socket run at " + port);
+            Log.d(TAG, "Receive socket listens to " + port);
             try {
                 serverSocket = new ServerSocket(port);
                 Log.d(TAG, "Group owner socket opened, waiting...");
@@ -194,8 +191,9 @@ public class CommunicationService extends Service {
                 outputStream = client.getOutputStream();
                 oos = new ObjectOutputStream(outputStream);
                 while (!isInterrupted() && running) {
-
+                    Log.d(TAG, "Read obj");
                     MsgBean readInObj = (MsgBean) ois.readObject();
+                    Log.d(TAG, "Read in obj");
                     if (null != readInObj) {
                         if (readInObj.hasText()) {
                             Log.d(TAG, "[Server] got: " + readInObj.getMsg());

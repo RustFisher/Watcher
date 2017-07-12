@@ -18,15 +18,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.rustfisher.watcher.R;
-import com.rustfisher.watcher.manager.LocalDevice;
+import com.rustfisher.watcher.manager.AirSisyphus;
 import com.rustfisher.watcher.service.CommunicationService;
 import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
 
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -42,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private WifiP2pManager mWifiP2pManager;
     private WifiP2pManager.Channel mChannel;
-    private LocalDevice mLocalDevice = LocalDevice.getInstance();
+    private AirSisyphus mAirSisyphus = AirSisyphus.getInstance();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         registerReceiver(mBroadcastReceiver, LocalUtils.makeWiFiP2pIntentFilter());
         registerReceiver(mBroadcastReceiver, new IntentFilter(AppConfigs.MSG_ONE_STR));
-        mMsgLin.setVisibility(LocalDevice.getInstance().isClient() ? View.VISIBLE : View.INVISIBLE);
+        mMsgLin.setVisibility(AirSisyphus.getInstance().isClient() ? View.VISIBLE : View.INVISIBLE);
     }
 
     @Override
@@ -129,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         mSendMsgBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mLocalDevice.sendStringMsg(mClientEt.getText().toString());
+                mAirSisyphus.sendStringMsg(mClientEt.getText().toString());
                 mClientEt.setText("");
             }
         });
@@ -139,18 +135,6 @@ public class MainActivity extends AppCompatActivity {
         startService(new Intent(getApplicationContext(), CommunicationService.class));
         mWifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mWifiP2pManager.initialize(this, getMainLooper(), null);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Log.d(TAG, "InetAddress.getLocalHost:  " + InetAddress.getLocalHost());
-                    Log.d(TAG, "Inet4Address.getLocalHost: " + Inet4Address.getLocalHost());
-                    Log.d(TAG, "Inet6Address.getLocalHost: " + Inet6Address.getLocalHost());
-                } catch (UnknownHostException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
     }
 
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
@@ -183,8 +167,8 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void updateLocalDeviceInfo(WifiP2pDevice device) {
-        mLocalInfoTv.setText(String.format(Locale.ENGLISH, "Name: %s\nMac address: %s\nStatus: %s",
-                device.deviceName, device.deviceAddress, LocalUtils.getDeviceStatusStr(device.status)));
+        mLocalInfoTv.setText(String.format(Locale.ENGLISH, "Name: %s\nStatus: %s\nIP address: %s",
+                device.deviceName, LocalUtils.getDeviceStatusStr(device.status), AirSisyphus.getLocalIPAddress()));
     }
 
     private void logUI(String str) {

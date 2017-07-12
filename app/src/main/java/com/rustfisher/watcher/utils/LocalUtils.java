@@ -77,6 +77,26 @@ public final class LocalUtils {
     }
 
 
+    public static byte[] IpStr2Bytes(String ip) {
+        String[] ipArr = ip.split("\\.");
+        byte[] ipBytes = new byte[ipArr.length];
+        for (int i = 0; i < ipBytes.length; i++) {
+            ipBytes[i] = Integer.valueOf(ipArr[i]).byteValue();
+        }
+        return ipBytes;
+    }
+
+    /**
+     * @param i IP int
+     * @return Convert IP int to String
+     */
+    public static String intToIpStr(int i) {
+        return (i & 0xFF) + "." +
+                ((i >> 8) & 0xFF) + "." +
+                ((i >> 16) & 0xFF) + "." +
+                (i >> 24 & 0xFF);
+    }
+
     public static boolean copyFile(InputStream inputStream, OutputStream out) {
         byte buf[] = new byte[1024];
         int len;

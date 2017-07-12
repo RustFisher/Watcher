@@ -21,7 +21,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.rustfisher.watcher.R;
-import com.rustfisher.watcher.manager.LocalDevice;
+import com.rustfisher.watcher.manager.AirSisyphus;
 import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.LocalUtils;
 
@@ -38,7 +38,7 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
 
     private TextView mTransferStatusTv;
     private ImageView mPicIv;
-    private LocalDevice mLocalDevice = LocalDevice.getInstance();
+    private AirSisyphus mAirSisyphus = AirSisyphus.getInstance();
 
     private Camera mCamera;
     private SurfaceView mCameraPreview;
@@ -91,7 +91,7 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
                 Bitmap bt = drawable.getBitmap();
                 ByteArrayOutputStream bAos = new ByteArrayOutputStream();
                 bt.compress(Bitmap.CompressFormat.PNG, 100, bAos);
-                mLocalDevice.sendPNGOut(bAos.toByteArray());
+                mAirSisyphus.sendPNGOut(bAos.toByteArray());
             }
         });
 
@@ -108,7 +108,7 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (AppConfigs.MSG_ONE_PIC.equals(action)) {
-                byte[] picArr = LocalDevice.getOnePicData();
+                byte[] picArr = AirSisyphus.getOnePicData();
                 if (null != picArr) {
                     Log.d(TAG, "[act] onReceive one pic, len=" + picArr.length);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(picArr, 0, picArr.length);
@@ -141,7 +141,7 @@ public class TransferCameraPicActivity extends Activity implements SurfaceHolder
             Camera.Parameters ps = camera.getParameters();
             if (ps.getPictureFormat() == PixelFormat.JPEG) {
                 Log.d(TAG, "onPictureTaken: " + data.length);
-                mLocalDevice.sendCameraJPEG(data);
+                mAirSisyphus.sendCameraJPEG(data);
             }
             camera.startPreview();
             mSafeToTakePicture = true;

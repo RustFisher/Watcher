@@ -64,4 +64,9 @@ public final class MsgBean implements Serializable {
     public boolean hasJPEG() {
         return (TYPE_JPEG & types) == TYPE_JPEG;
     }
+
+    @Override
+    public String toString() {
+        return "[MsgBean " + types + "]";
+    }
 }

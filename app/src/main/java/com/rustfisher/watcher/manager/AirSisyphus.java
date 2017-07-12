@@ -6,39 +6,30 @@ import android.util.Log;
 
 import com.rustfisher.watcher.WiFiApp;
 import com.rustfisher.watcher.beans.MsgBean;
-import com.rustfisher.watcher.service.CommunicationService;
+import com.rustfisher.watcher.utils.AppConfigs;
 import com.rustfisher.watcher.utils.ClientTransferThread;
+import com.rustfisher.watcher.utils.ReceiveSocketThread;
 
 import java.net.InetAddress;
 
 /**
- * Holds status
+ * Sisyphus in the air, who holds WiFi p2p status
  * Created by Rust Fisher on 2017/2/28.
  */
-public final class LocalDevice {
+public final class AirSisyphus {
 
     private static final String TAG = "rustApp";
     private volatile static byte[] onePicData;
-    private static LocalDevice instance = new LocalDevice();
+    private static AirSisyphus instance = new AirSisyphus();
     private volatile WifiP2pDevice mDevice;
     private volatile WifiP2pInfo wifiP2pInfo;
-    private PART myPart;
-    private ClientTransferThread mClientTransferThread;
-    private static String localIPAddress = "192.168.0.1";
+    private static String localIPAddress = "*.*.*.*";
 
-    private LocalDevice() {
+    private ReceiveSocketThread mGroupOwnerThread;      // Group owner part
+    private ClientTransferThread mClientTransferThread; // Client part
+
+    private AirSisyphus() {
         mDevice = new WifiP2pDevice();
-        myPart = PART.WATCHER;
-    }
-
-    private CommunicationService service;
-
-    public CommunicationService getService() {
-        return service;
-    }
-
-    public void setService(CommunicationService service) {
-        this.service = service;
     }
 
     public static byte[] getOnePicData() {
@@ -46,22 +37,10 @@ public final class LocalDevice {
     }
 
     public static void setOnePicData(byte[] onePicData) {
-        LocalDevice.onePicData = onePicData;
+        AirSisyphus.onePicData = onePicData;
     }
 
-    public void setMyPart(PART myPart) {
-        this.myPart = myPart;
-    }
-
-    public boolean isMonitor() {
-        return PART.MONITOR.equals(myPart);
-    }
-
-    public boolean isWatcher() {
-        return PART.WATCHER.equals(myPart);
-    }
-
-    public static LocalDevice getInstance() {
+    public static AirSisyphus getInstance() {
         return instance;
     }
 
@@ -86,20 +65,12 @@ public final class LocalDevice {
     }
 
     public static void setLocalIPAddress(String ip) {
+        Log.d(TAG, "setLocalIPAddress: " + ip);
         localIPAddress = ip;
     }
 
     public static String getLocalIPAddress() {
         return localIPAddress;
-    }
-
-    public static byte[] IpStr2Bytes(String ip) {
-        String[] ipArr = ip.split("\\.");
-        byte[] ipBytes = new byte[ipArr.length];
-        for (int i = 0; i < ipBytes.length; i++) {
-            ipBytes[i] = Integer.valueOf(ipArr[i]).byteValue();
-        }
-        return ipBytes;
     }
 
     /**
@@ -114,10 +85,10 @@ public final class LocalDevice {
     }
 
     // As a client, I know the group owner address
-    public void startClientTransferThread() {
+    private void startClientTransferThread() {
         if (null == mClientTransferThread) {
             mClientTransferThread =
-                    new ClientTransferThread(LocalDevice.getInstance().getOwnerInetAddress(), WiFiApp.getApp().getApplicationContext());
+                    new ClientTransferThread(AirSisyphus.getInstance().getOwnerInetAddress(), WiFiApp.getApp().getApplicationContext());
             mClientTransferThread.start();
         }
     }
@@ -141,7 +112,7 @@ public final class LocalDevice {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(data, MsgBean.TYPE_JPEG));
         } else if (isGroupOwner()) {
-            getService().send(new MsgBean(data, MsgBean.TYPE_JPEG));
+            groupOwnerSend(new MsgBean(data, MsgBean.TYPE_JPEG));
         }
     }
 
@@ -149,7 +120,7 @@ public final class LocalDevice {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(picData, MsgBean.TYPE_PNG));
         } else if (isGroupOwner()) {
-            getService().send(new MsgBean(picData, MsgBean.TYPE_PNG));
+            groupOwnerSend(new MsgBean(picData, MsgBean.TYPE_PNG));
         }
     }
 
@@ -157,34 +128,40 @@ public final class LocalDevice {
         if (isClient()) {
             sendMsgBeanToGroupOwner(new MsgBean(msg));
         } else if (isGroupOwner()) {
-            getService().send(new MsgBean(msg));
+            groupOwnerSend(new MsgBean(msg));
         }
+    }
+
+    public void stopGroupOwnerThread() {
+        if (null != mGroupOwnerThread) {
+            mGroupOwnerThread.interrupt();
+            mGroupOwnerThread = null;
+        }
+    }
+
+    private void groupOwnerSend(MsgBean msg) {
+        if (mGroupOwnerThread != null) {
+            mGroupOwnerThread.sendMsgBean(msg);
+        } else {
+            Log.e(TAG, "[service] send fail");
+        }
+    }
+
+    public void asGroupOwner() {
+        if (mGroupOwnerThread == null) {
+            mGroupOwnerThread = new ReceiveSocketThread(AppConfigs.PORT_GROUP_OWNER);
+            mGroupOwnerThread.start();
+        }
+        stopClientTransferThread();
+    }
+
+    public void asClient() {
+        startClientTransferThread();
     }
 
     public void exitDevice() {
         stopClientTransferThread();
+        stopGroupOwnerThread();
     }
 
-    public static String intToIpStr(int i) {
-        return (i & 0xFF) + "." +
-                ((i >> 8) & 0xFF) + "." +
-                ((i >> 16) & 0xFF) + "." +
-                (i >> 24 & 0xFF);
-    }
-
-    /**
-     * MONITOR receives data from WATCHER.
-     */
-    public enum PART {
-        MONITOR(0, "monitor"),
-        WATCHER(1, "watcher");
-
-        int code;
-        String comment;
-
-        PART(int code, String comment) {
-            this.code = code;
-            this.comment = comment;
-        }
-    }
 }

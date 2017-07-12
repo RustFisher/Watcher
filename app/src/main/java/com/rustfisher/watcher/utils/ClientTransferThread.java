@@ -5,9 +5,8 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.rustfisher.watcher.beans.MsgBean;
-import com.rustfisher.watcher.manager.LocalDevice;
+import com.rustfisher.watcher.manager.AirSisyphus;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -39,6 +38,7 @@ public class ClientTransferThread extends Thread {
 
     public void sendMsgBean(MsgBean bean) {
         try {
+            Log.d(TAG, "sendMsgBean: " + bean);
             oos.writeObject(bean);
             oos.flush();
         } catch (Exception e) {
@@ -53,7 +53,7 @@ public class ClientTransferThread extends Thread {
         Log.d(TAG, getId() + " ClientTransferThread runs.");
         Socket socket = new Socket();
         try {
-            Thread.sleep(1000);
+            Thread.sleep(1000); // Wait for a while
             socket.bind(null);
             socket.connect((new InetSocketAddress(host, AppConfigs.PORT_GROUP_OWNER)), SOCKET_TIMEOUT);
             Log.d(TAG, "Client socket is connected: " + socket.isConnected());
@@ -74,7 +74,7 @@ public class ClientTransferThread extends Thread {
                             }
                             if (readInObj.hasPNG()) {
                                 Log.d(TAG, "[Client] got a PNG.");
-                                LocalDevice.setOnePicData(readInObj.getPNGBytes());
+                                AirSisyphus.setOnePicData(readInObj.getPNGBytes());
                                 Intent in = new Intent(AppConfigs.MSG_ONE_PIC);
                                 ctx.sendBroadcast(in);
                             }

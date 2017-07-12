@@ -15,20 +15,8 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.rustfisher.watcher.beans.MsgBean;
-import com.rustfisher.watcher.manager.LocalDevice;
-import com.rustfisher.watcher.utils.AppConfigs;
+import com.rustfisher.watcher.manager.AirSisyphus;
 import com.rustfisher.watcher.utils.LocalUtils;
-import com.rustfisher.watcher.utils.SaveJpgThread;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.ArrayList;
 
 /**
  * Hold some service
@@ -42,9 +30,8 @@ public class CommunicationService extends Service {
 
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
-    private LocalDevice mLocalDevice = LocalDevice.getInstance();
+    private AirSisyphus mAirSisyphus = AirSisyphus.getInstance();
 
-    private ReceiveSocketThread mGroupOwnerThread;
 
     @Nullable
     @Override
@@ -59,19 +46,17 @@ public class CommunicationService extends Service {
         mChannel = mManager.initialize(this, getMainLooper(), null);
         WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-        LocalDevice.setLocalIPAddress(LocalDevice.intToIpStr(wifiInfo.getIpAddress()));
+        AirSisyphus.setLocalIPAddress(LocalUtils.intToIpStr(wifiInfo.getIpAddress()));
         IntentFilter intentFilter = LocalUtils.makeWiFiP2pIntentFilter();
         intentFilter.addAction(MSG_STOP);
         registerReceiver(mReceiver, intentFilter);
-        mLocalDevice.setService(this);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mLocalDevice.exitDevice();
+        mAirSisyphus.exitDevice();
         unregisterReceiver(mReceiver);
-        mLocalDevice.setService(null);
         Log.d(TAG, "Service onDestroy, bye!");
     }
 
@@ -88,148 +73,23 @@ public class CommunicationService extends Service {
                     mManager.requestConnectionInfo(mChannel, new WifiP2pManager.ConnectionInfoListener() {
                         @Override
                         public void onConnectionInfoAvailable(WifiP2pInfo info) {
-                            mLocalDevice.setWifiP2pInfo(info);
+                            mAirSisyphus.setWifiP2pInfo(info);
                             if (info.isGroupOwner) {
-                                asGroupOwner();
+                                mAirSisyphus.asGroupOwner();
                             } else {
-                                asClient();
+                                mAirSisyphus.asClient();
                             }
                         }
                     });
                 } else {
-                    stopAllSocketThread();
+                    mAirSisyphus.stopClientTransferThread();
+                    mAirSisyphus.stopGroupOwnerThread();
                 }
             } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
                 WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
-                mLocalDevice.setDevice(device);
+                mAirSisyphus.setDevice(device);
             }
         }
     };
-
-    private void stopAllSocketThread() {
-        mLocalDevice.stopClientTransferThread();
-        stopGroupOwnerThread();
-    }
-
-    private void stopGroupOwnerThread() {
-        if (null != mGroupOwnerThread) {
-            mGroupOwnerThread.interrupt();
-            mGroupOwnerThread = null;
-        }
-    }
-
-    public void send(MsgBean msg) {
-        if (mGroupOwnerThread != null) {
-            mGroupOwnerThread.sendMsgBean(msg);
-        } else {
-            Log.e(TAG, "[service] send fail");
-        }
-    }
-
-    private void asGroupOwner() {
-        if (mGroupOwnerThread == null) {
-            mGroupOwnerThread = new ReceiveSocketThread(AppConfigs.PORT_GROUP_OWNER);
-            mGroupOwnerThread.start();
-        }
-        mLocalDevice.stopClientTransferThread();
-    }
-
-    private void asClient() {
-        mLocalDevice.startClientTransferThread();
-    }
-
-    /**
-     * Receive data via socket.
-     */
-    class ReceiveSocketThread extends Thread {
-        private volatile boolean running = true;
-        private ServerSocket serverSocket;
-        private final int port;
-        private InputStream inputstream;
-        private ObjectInputStream ois;
-        private ObjectOutputStream oos;
-        private OutputStream outputStream;
-
-        public ReceiveSocketThread(int port) {
-            this.port = port;
-        }
-
-        public void sendMsgBean(MsgBean msgBean) {
-            if (null != oos) {
-                try {
-                    oos.writeObject(msgBean);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            } else {
-                Log.e(TAG, "[service] sendMsgBean: fail");
-            }
-        }
-
-        @Override
-        public void interrupt() {
-            running = false;
-            try {
-                serverSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            super.interrupt();
-        }
-
-        @Override
-        public void run() {
-            super.run();
-            Log.d(TAG, "Receive socket listens to " + port);
-            try {
-                serverSocket = new ServerSocket(port);
-                Log.d(TAG, "Group owner socket opened, waiting...");
-                Socket client = serverSocket.accept();
-                Log.d(TAG, "Group owner socket accepted. We can talk now!");
-                inputstream = client.getInputStream();
-                ois = new ObjectInputStream(inputstream);
-                outputStream = client.getOutputStream();
-                oos = new ObjectOutputStream(outputStream);
-                while (!isInterrupted() && running) {
-                    Log.d(TAG, "Read obj");
-                    MsgBean readInObj = (MsgBean) ois.readObject();
-                    Log.d(TAG, "Read in obj");
-                    if (null != readInObj) {
-                        if (readInObj.hasText()) {
-                            Log.d(TAG, "[Server] got: " + readInObj.getMsg());
-                            Intent textIntent = new Intent(AppConfigs.MSG_ONE_STR);
-                            textIntent.putExtra(AppConfigs.MSG_ONE_STR, readInObj.getMsg());
-                            sendBroadcast(textIntent);
-                        }
-                        if (readInObj.hasPNG()) {
-                            Log.d(TAG, "[Server] got a PNG.");
-                            LocalDevice.setOnePicData(readInObj.getPNGBytes());
-                            Intent in = new Intent(AppConfigs.MSG_ONE_PIC);
-                            sendBroadcast(in);
-                        }
-                        if (readInObj.hasJPEG()) {
-                            Log.d(TAG, "[Server] got jpg");
-                            new SaveJpgThread(readInObj.getJpegBytes()).start();
-                        }
-                    }
-                }
-                Log.d(TAG, "connection over");
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    if (null != inputstream) {
-                        inputstream.close();
-                    }
-                    if (null != outputStream) {
-                        outputStream.close();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            Log.e(TAG, "Group owner socket thread exits.");
-        }
-    }
 
 }

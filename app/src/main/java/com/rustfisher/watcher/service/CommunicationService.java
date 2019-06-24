@@ -16,6 +16,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.rustfisher.watcher.manager.AirSisyphus;
+import com.rustfisher.watcher.manager.DatagramMgr;
 import com.rustfisher.watcher.utils.LocalUtils;
 
 /**
@@ -47,6 +48,7 @@ public class CommunicationService extends Service {
         WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = wifiManager.getConnectionInfo();
         AirSisyphus.setLocalIPAddress(LocalUtils.intToIpStr(wifiInfo.getIpAddress()));
+        DatagramMgr.prepare(getApplicationContext());
         IntentFilter intentFilter = LocalUtils.makeWiFiP2pIntentFilter();
         intentFilter.addAction(MSG_STOP);
         registerReceiver(mReceiver, intentFilter);

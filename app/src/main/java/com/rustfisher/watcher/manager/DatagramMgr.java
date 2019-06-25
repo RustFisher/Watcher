@@ -6,11 +6,13 @@ import android.net.wifi.WifiManager;
 import android.util.Log;
 
 import com.rustfisher.watcher.utils.DatagramReceiveThread;
+import com.rustfisher.watcher.utils.DatagramSendThread;
 import com.rustfisher.watcher.utils.LocalUtils;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * 数据报管理器
@@ -18,12 +20,9 @@ import java.net.InetAddress;
  */
 public class DatagramMgr {
     private static final String TAG = "rustAppDatagramMgr";
-    public static final int COMMON_UDP_PORT = 8081;
-    public static final int UDP_RECEIVE_DATA_BUFFER_LEN = 2048;
+    public static final int COMMON_UDP_PORT = 9696;
     private static DatagramReceiveThread datagramReceiveThread;
-    private static DatagramSocket datagramSocket;
-    private static DatagramPacket receiveDatagramPacket;
-    private static DatagramPacket sendDatagramPacket;
+    private static DatagramSendThread datagramSendThread;
 
     /**
      * 应用启动时，尽早调用
@@ -34,19 +33,12 @@ public class DatagramMgr {
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             final String localIP = LocalUtils.intToIpStr(wifiInfo.getIpAddress());
             Log.d(TAG, "prepare: 本地ip: " + localIP);
-            try {
-                datagramSocket = new DatagramSocket();
-                final byte[] rData = new byte[UDP_RECEIVE_DATA_BUFFER_LEN];
-                InetAddress inetAddress = InetAddress.getByName(localIP);
-                receiveDatagramPacket = new DatagramPacket(rData, rData.length, inetAddress, COMMON_UDP_PORT);
-                restartDatagramReceiveThread(datagramSocket, receiveDatagramPacket);
-            } catch (Exception e) {
-                e.printStackTrace();
-                Log.e(TAG, "prepare: ", e);
-            }
         } else {
             Log.e(TAG, "prepare: 无法获取WiFiManager");
         }
+        final String targetIp = "192.168.2.124"; // 192.168.2.133; 192.168.2.124
+        restartDatagramReceiveThread(COMMON_UDP_PORT);
+        restartSendThread(targetIp);
     }
 
     public static void finishDatagramReceiveThread() {
@@ -56,9 +48,24 @@ public class DatagramMgr {
         }
     }
 
-    public static void restartDatagramReceiveThread(DatagramSocket socket, DatagramPacket packet) {
+    public static void restartDatagramReceiveThread(int port) {
         finishDatagramReceiveThread();
-        datagramReceiveThread = new DatagramReceiveThread(socket, packet);
+        datagramReceiveThread = new DatagramReceiveThread(port);
         datagramReceiveThread.start();
+    }
+
+    public static void restartSendThread(String hostName) {
+        Log.d(TAG, "restartSendThread: hostName: " + hostName);
+        if (null != datagramSendThread) {
+            datagramSendThread.interrupt();
+            datagramSendThread = null;
+        }
+        try {
+            datagramSendThread = new DatagramSendThread(InetAddress.getByName(hostName), COMMON_UDP_PORT);
+            datagramSendThread.start();
+            Log.d(TAG, "restartSendThread: 重启发送线程 ");
+        } catch (UnknownHostException e) {
+            Log.e(TAG, "restartSendThread: ", e);
+        }
     }
 }

@@ -36,7 +36,7 @@ public class DatagramMgr {
         } else {
             Log.e(TAG, "prepare: 无法获取WiFiManager");
         }
-        final String targetIp = "192.168.2.124"; // 192.168.2.133; 192.168.2.124
+        final String targetIp = "192.168.2.133"; // 192.168.2.133; 192.168.2.124
         restartDatagramReceiveThread(COMMON_UDP_PORT);
         restartSendThread(targetIp);
     }

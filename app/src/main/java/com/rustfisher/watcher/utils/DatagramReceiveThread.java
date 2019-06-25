@@ -41,7 +41,9 @@ public class DatagramReceiveThread extends Thread {
                 e.printStackTrace();
             }
             byte[] data = datagramPacket.getData();
-            Log.d(TAG, "run: 收到数据 " + bytes2Hex(data));
+            Log.d(TAG, "run: address: " + datagramPacket.getAddress() + ", port: " + datagramPacket.getPort()
+                    + ", len: " + datagramPacket.getLength() + ", offset: " + datagramPacket.getOffset());
+//            Log.d(TAG, "run: 收到数据 " + bytes2Hex(data));
         }
         Log.d(TAG, "run: 运行完毕");
     }

@@ -5,6 +5,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.rustfisher.watcher.utils.BroadcastReceiveThread;
 import com.rustfisher.watcher.utils.BroadcastThread;
 import com.rustfisher.watcher.utils.DatagramReceiveThread;
 import com.rustfisher.watcher.utils.DatagramSendThread;
@@ -24,7 +25,8 @@ public class DatagramMgr {
     private static DatagramReceiveThread datagramReceiveThread;
     private static DatagramSendThread datagramSendThread;
 
-    private static BroadcastThread broadcastThread; // 发送广播
+    private static BroadcastReceiveThread broadcastReceiveThread; // 用来接收广播数据
+    private static BroadcastThread broadcastThread;               // 发送广播
 
     public static void prepare(Context context) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -36,7 +38,7 @@ public class DatagramMgr {
             Log.e(TAG, "prepare: 无法获取WiFiManager");
         }
         final String targetIp = "192.168.2.133"; // 192.168.2.133; 192.168.2.124
-        restartServerBroadcastThread(context);
+        restartBroadcastThread(context);
         restartDatagramReceiveThread(COMMON_UDP_PORT);
 //        restartSendThread(targetIp);
     }
@@ -69,7 +71,8 @@ public class DatagramMgr {
         }
     }
 
-    public static void restartServerBroadcastThread(Context context) {
+    // 启动广播收发线程
+    public static void restartBroadcastThread(Context context) {
         if (null != broadcastThread) {
             broadcastThread.interrupt();
             broadcastThread = null;
@@ -80,8 +83,15 @@ public class DatagramMgr {
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             localIp = LocalUtils.intToIpStr(wifiInfo.getIpAddress());
         }
-        Log.d(TAG, "restartServerBroadcastThread: localIP: " + localIp);
+        Log.d(TAG, "restartBroadcastThread: localIP: " + localIp);
         broadcastThread = new BroadcastThread(context, localIp, UDP_BROADCAST_PORT);
         broadcastThread.start();
+
+        if (null != broadcastReceiveThread) {
+            broadcastReceiveThread.interrupt();
+            broadcastReceiveThread = null;
+        }
+        broadcastReceiveThread = new BroadcastReceiveThread(localIp, UDP_BROADCAST_PORT);
+        broadcastReceiveThread.start();
     }
 }

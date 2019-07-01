@@ -25,7 +25,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".activity.ChooseAct">
+        <activity android:name=".activity.BroadcastAct">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

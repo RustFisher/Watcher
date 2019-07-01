@@ -8,15 +8,15 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 
 /**
- * 接收数据包线程
+ * 接收广播数据包线程
  * Created on 2019-6-24
  */
-public class DatagramReceiveThread extends Thread {
+public class BroadcastReceiveThread extends Thread {
     private static final String TAG = "rustAppDR";
     private DatagramSocket datagramSocket;
     private DatagramPacket datagramPacket;
 
-    public DatagramReceiveThread(int port) {
+    public BroadcastReceiveThread(int port) {
         try {
             this.datagramSocket = new DatagramSocket(port);
             byte[] buf = new byte[20480];

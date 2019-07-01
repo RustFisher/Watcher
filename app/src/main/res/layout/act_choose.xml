@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/choose_as_server"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:background="#0011ff"
+        android:gravity="center"
+        android:text="As server"
+        android:textColor="#fff" />
+
+    <TextView
+        android:id="@+id/choose_as_client"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="12dp"
+        android:layout_toEndOf="@id/choose_as_server"
+        android:background="#0011ff"
+        android:gravity="center"
+        android:text="As client"
+        android:textColor="#fff" />
+
+</RelativeLayout>

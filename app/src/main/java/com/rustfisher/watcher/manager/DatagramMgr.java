@@ -5,12 +5,11 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.rustfisher.watcher.utils.BroadcastThread;
 import com.rustfisher.watcher.utils.DatagramReceiveThread;
 import com.rustfisher.watcher.utils.DatagramSendThread;
 import com.rustfisher.watcher.utils.LocalUtils;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
@@ -21,12 +20,12 @@ import java.net.UnknownHostException;
 public class DatagramMgr {
     private static final String TAG = "rustAppDatagramMgr";
     public static final int COMMON_UDP_PORT = 9696;
+    public static final int UDP_BROADCAST_PORT = 9697; // UDP广播的端口
     private static DatagramReceiveThread datagramReceiveThread;
     private static DatagramSendThread datagramSendThread;
 
-    /**
-     * 应用启动时，尽早调用
-     */
+    private static BroadcastThread broadcastThread; // 发送广播
+
     public static void prepare(Context context) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifiManager != null) {
@@ -37,8 +36,9 @@ public class DatagramMgr {
             Log.e(TAG, "prepare: 无法获取WiFiManager");
         }
         final String targetIp = "192.168.2.133"; // 192.168.2.133; 192.168.2.124
+        restartServerBroadcastThread(context);
         restartDatagramReceiveThread(COMMON_UDP_PORT);
-        restartSendThread(targetIp);
+//        restartSendThread(targetIp);
     }
 
     public static void finishDatagramReceiveThread() {
@@ -67,5 +67,21 @@ public class DatagramMgr {
         } catch (UnknownHostException e) {
             Log.e(TAG, "restartSendThread: ", e);
         }
+    }
+
+    public static void restartServerBroadcastThread(Context context) {
+        if (null != broadcastThread) {
+            broadcastThread.interrupt();
+            broadcastThread = null;
+        }
+        String localIp = "error";
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager != null) {
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+            localIp = LocalUtils.intToIpStr(wifiInfo.getIpAddress());
+        }
+        Log.d(TAG, "restartServerBroadcastThread: localIP: " + localIp);
+        broadcastThread = new BroadcastThread(context, localIp, UDP_BROADCAST_PORT);
+        broadcastThread.start();
     }
 }

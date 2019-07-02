@@ -47,4 +47,21 @@ public final class BroadcastMsg extends BaseMsg {
         return "[BroadcastMsg] cmd: " + cmd + ", lan_ipv4: " + lan_ipv4 + ", nickname:" + nickname
                 + ", msg: " + msg;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (null == obj) {
+            return false;
+        }
+        if (obj instanceof BroadcastMsg) {
+            BroadcastMsg input = (BroadcastMsg) obj;
+            return input.getLan_ipv4().equals(getLan_ipv4()) && input.getNickname().equals(getNickname());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode() + getLan_ipv4().hashCode();
+    }
 }

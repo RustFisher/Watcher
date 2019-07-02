@@ -5,6 +5,8 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import com.rustfisher.watcher.transfer.BroadcastListener;
+import com.rustfisher.watcher.transfer.model.commond.BroadcastMsg;
 import com.rustfisher.watcher.utils.BroadcastReceiveThread;
 import com.rustfisher.watcher.utils.BroadcastThread;
 import com.rustfisher.watcher.utils.DatagramReceiveThread;
@@ -13,6 +15,10 @@ import com.rustfisher.watcher.utils.LocalUtils;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * 数据报管理器
@@ -27,6 +33,8 @@ public class DatagramMgr {
 
     private static BroadcastReceiveThread broadcastReceiveThread; // 用来接收广播数据
     private static BroadcastThread broadcastThread;               // 发送广播
+
+    private static Set<DatagramListener> listenerSet = new HashSet<>();
 
     public static void prepare(Context context) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -92,6 +100,28 @@ public class DatagramMgr {
             broadcastReceiveThread = null;
         }
         broadcastReceiveThread = new BroadcastReceiveThread(localIp, UDP_BROADCAST_PORT);
+        broadcastReceiveThread.setBroadcastListener(new BroadcastListener() {
+            @Override
+            public void onDeviceList(List<BroadcastMsg> list) {
+                tellDeviceList(list);
+            }
+        });
         broadcastReceiveThread.start();
+    }
+
+    private static void tellDeviceList(List<BroadcastMsg> list) {
+        final List<BroadcastMsg> newList = new ArrayList<>(list);
+
+        for (DatagramListener l : listenerSet) {
+            l.onDeviceList(newList);
+        }
+    }
+
+    public static void addListener(DatagramListener l) {
+        listenerSet.add(l);
+    }
+
+    public static void removeListener(DatagramListener l) {
+        listenerSet.remove(l);
     }
 }

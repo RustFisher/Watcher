@@ -21,6 +21,7 @@ public class BroadcastAct extends AbsBaseActivity implements View.OnClickListene
     private static final String TAG = "rustAppBroadcastAct";
     private static final int REQ_PER = 1000;
 
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         mPageTag = TAG;

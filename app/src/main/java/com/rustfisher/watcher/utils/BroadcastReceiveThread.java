@@ -3,6 +3,7 @@ package com.rustfisher.watcher.utils;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.rustfisher.watcher.transfer.BroadcastListener;
 import com.rustfisher.watcher.transfer.WaProtocol;
 import com.rustfisher.watcher.transfer.model.BaseMsg;
 import com.rustfisher.watcher.transfer.model.commond.BroadcastMsg;
@@ -11,6 +12,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 接收广播数据包线程
@@ -21,6 +24,9 @@ public class BroadcastReceiveThread extends Thread {
     private DatagramSocket datagramSocket;
     private DatagramPacket datagramPacket;
     private String localIp; // 本地ip地址
+
+    private BroadcastListener broadcastListener;
+    private List<BroadcastMsg> broadcastMsgList = new ArrayList<>();
 
     public BroadcastReceiveThread(String localIp, int port) {
         setName("广播接收线程 ");
@@ -62,6 +68,12 @@ public class BroadcastReceiveThread extends Thread {
                             continue;// 收到了本机的广播
                         }
                         Log.d(TAG, getName() + "收到:" + broadcastMsg);
+                        if (!broadcastMsgList.contains(broadcastMsg)) {
+                            broadcastMsgList.add(broadcastMsg);
+                            if (null != broadcastListener) {
+                                broadcastListener.onDeviceList(broadcastMsgList);
+                            }
+                        }
                         break;
                 }
             } catch (Exception e) {
@@ -73,6 +85,14 @@ public class BroadcastReceiveThread extends Thread {
 //            Log.d(TAG, "run: 收到数据 " + bytes2Hex(data));
         }
         Log.d(TAG, getName() + "run: 运行完毕");
+    }
+
+    public void setBroadcastListener(BroadcastListener broadcastListener) {
+        this.broadcastListener = broadcastListener;
+    }
+
+    public List<BroadcastMsg> getBroadcastMsgList() {
+        return broadcastMsgList;
     }
 
     public static String bytes2Hex(byte[] bytes) {

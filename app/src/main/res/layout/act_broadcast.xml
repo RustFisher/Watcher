@@ -14,4 +14,9 @@
         android:text="Broadcast"
         android:textColor="#fff" />
 
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/broadcast_page_device_rv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
 </RelativeLayout>

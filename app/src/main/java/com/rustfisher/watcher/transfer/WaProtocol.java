@@ -5,6 +5,7 @@ package com.rustfisher.watcher.transfer;
  * Created on 2019-7-1
  */
 public final class WaProtocol {
-    public static final int CODE_BROADCAST = 255; // 广播
-
+    public static final int CODE_CONNECTION_ESTABLISH = 253; // 已建立连接
+    public static final int CODE_HAND_SHAKE = 254;           // 想要建立连接
+    public static final int CODE_BROADCAST = 255;            // 广播
 }

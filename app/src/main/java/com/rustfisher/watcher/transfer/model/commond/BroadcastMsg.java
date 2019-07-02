@@ -7,13 +7,8 @@ import com.rustfisher.watcher.transfer.model.BaseMsg;
  */
 public final class BroadcastMsg extends BaseMsg {
 
-    /**
-     * cmd : 255
-     * lan_ipv4 : 192.168.0.2
-     * msg : Anyone hear me?
-     */
-
     private String lan_ipv4;
+    private String nickname; // 手机昵称
 
     public int getCmd() {
         return cmd;
@@ -39,8 +34,17 @@ public final class BroadcastMsg extends BaseMsg {
         this.msg = msg;
     }
 
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
     @Override
     public String toString() {
-        return "[BroadcastMsg] cmd: " + cmd + ", lan_ipv4: " + lan_ipv4 + ", msg: " + msg;
+        return "[BroadcastMsg] cmd: " + cmd + ", lan_ipv4: " + lan_ipv4 + ", nickname:" + nickname
+                + ", msg: " + msg;
     }
 }

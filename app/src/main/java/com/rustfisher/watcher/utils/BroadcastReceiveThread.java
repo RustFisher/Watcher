@@ -61,12 +61,13 @@ public class BroadcastReceiveThread extends Thread {
                         if (localIp.equals(broadcastMsg.getLan_ipv4())) {
                             continue;// 收到了本机的广播
                         }
+                        Log.d(TAG, getName() + "收到:" + broadcastMsg);
                         break;
                 }
             } catch (Exception e) {
                 Log.e(TAG, getName() + "转换json出错: ", e);
             }
-            Log.d(TAG, getName() + "收到msg: " + msg);
+            Log.d(TAG, getName() + "收到: " + msg);
             Log.d(TAG, getName() + " run: address: " + datagramPacket.getAddress() + ", port: " + datagramPacket.getPort()
                     + ", len: " + datagramPacket.getLength() + ", offset: " + datagramPacket.getOffset() + ", " + gotJson);
 //            Log.d(TAG, "run: 收到数据 " + bytes2Hex(data));

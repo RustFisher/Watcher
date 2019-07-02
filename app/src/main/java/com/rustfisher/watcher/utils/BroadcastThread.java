@@ -3,6 +3,7 @@ package com.rustfisher.watcher.utils;
 import android.content.Context;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -28,6 +29,7 @@ public class BroadcastThread extends Thread {
         broadcastMsg = new BroadcastMsg();
         broadcastMsg.setCmd(255);
         broadcastMsg.setLan_ipv4(myIPv4);
+        broadcastMsg.setNickname(Build.MODEL + "|" + myIPv4);
         broadcastMsg.setMsg("Anyone here?");
         Log.d(TAG, "BroadcastThread: broadcastMsg " + broadcastMsg);
         try {

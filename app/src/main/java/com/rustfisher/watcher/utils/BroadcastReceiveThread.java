@@ -17,6 +17,7 @@ import java.util.List;
 
 /**
  * 接收广播数据包线程
+ *
  * Created on 2019-7-1
  */
 public class BroadcastReceiveThread extends Thread {
@@ -79,10 +80,15 @@ public class BroadcastReceiveThread extends Thread {
             } catch (Exception e) {
                 Log.e(TAG, getName() + "转换json出错: ", e);
             }
-            Log.d(TAG, getName() + "收到: " + msg);
-            Log.d(TAG, getName() + " run: address: " + datagramPacket.getAddress() + ", port: " + datagramPacket.getPort()
-                    + ", len: " + datagramPacket.getLength() + ", offset: " + datagramPacket.getOffset() + ", " + gotJson);
-//            Log.d(TAG, "run: 收到数据 " + bytes2Hex(data));
+//            Log.d(TAG, getName() + "收到: " + msg);
+//            Log.d(TAG, getName() + " run: address: " + datagramPacket.getAddress() + ", port: " + datagramPacket.getPort()
+//                    + ", len: " + datagramPacket.getLength() + ", offset: " + datagramPacket.getOffset() + ", " + gotJson);
+        }
+        try {
+            datagramSocket.close();
+            datagramSocket = null;
+        } catch (Exception e) {
+            Log.e(TAG, getName() + "尝试关闭socket出错: ", e);
         }
         Log.d(TAG, getName() + "run: 运行完毕");
     }

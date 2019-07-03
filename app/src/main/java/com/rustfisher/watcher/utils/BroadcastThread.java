@@ -26,6 +26,7 @@ public class BroadcastThread extends Thread {
     private BroadcastMsg broadcastMsg;
 
     public BroadcastThread(Context context, String myIPv4, int broadcastPort) {
+        setName("UDP广播线程 ");
         broadcastMsg = new BroadcastMsg();
         broadcastMsg.setCmd(255);
         broadcastMsg.setLan_ipv4(myIPv4);
@@ -49,20 +50,27 @@ public class BroadcastThread extends Thread {
         super.run();
         Gson gson = new Gson();
         String json = gson.toJson(broadcastMsg);
-        Log.d(TAG, "UDP广播线程 要发送的数据: " + json);
+        Log.d(TAG, getName() + "要发送的数据: " + json);
         int n = 0;
         while (!isInterrupted()) {
             try {
                 Thread.sleep(1500);
                 datagramPacket.setData(json.getBytes());
                 datagramSocket.send(datagramPacket);
-                Log.d(TAG, "UDP广播线程 run(): 发送数据: " + ++n);
+                Log.d(TAG, getName() + "run(): 发送数据: " + ++n);
             } catch (Exception e) {
                 e.printStackTrace();
-                Log.e(TAG, "UDP广播线程 发送线程 ", e);
+                Log.e(TAG, getName() + "发送线程 ", e);
                 break;
             }
         }
+        try {
+            datagramSocket.close();
+            datagramSocket = null;
+        } catch (Exception e) {
+            Log.e(TAG, getName() + "关闭发送socket出错: ", e);
+        }
+        Log.d(TAG, getName() + "运行结束");
     }
 
     private InetAddress getBroadcastAddress(Context context) throws IOException {

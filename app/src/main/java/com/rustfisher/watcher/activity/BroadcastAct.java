@@ -82,8 +82,14 @@ public class BroadcastAct extends AbsBaseActivity implements View.OnClickListene
 
     private DatagramListener mDatagramListener = new DatagramListener() {
         @Override
-        public void onDeviceList(List<BroadcastMsg> list) {
+        public void onDeviceList(final List<BroadcastMsg> list) {
             super.onDeviceList(list);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mDatagramDeviceReAdapter.updateDataList(list);
+                }
+            });
         }
     };
 }

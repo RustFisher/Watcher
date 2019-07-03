@@ -95,18 +95,18 @@ public class DatagramMgr {
         broadcastThread = new BroadcastThread(context, localIp, UDP_BROADCAST_PORT);
         broadcastThread.start();
 
-        if (null != broadcastReceiveThread) {
-            broadcastReceiveThread.interrupt();
-            broadcastReceiveThread = null;
+        if (null == broadcastReceiveThread) {
+            broadcastReceiveThread = new BroadcastReceiveThread(localIp, UDP_BROADCAST_PORT);
+            broadcastReceiveThread.setBroadcastListener(new BroadcastListener() {
+                @Override
+                public void onDeviceList(List<BroadcastMsg> list) {
+                    tellDeviceList(list);
+                }
+            });
+            broadcastReceiveThread.start();
+        } else {
+            Log.d(TAG, "restartBroadcastThread: 数据接收线程已经在运行了 " + broadcastReceiveThread);
         }
-        broadcastReceiveThread = new BroadcastReceiveThread(localIp, UDP_BROADCAST_PORT);
-        broadcastReceiveThread.setBroadcastListener(new BroadcastListener() {
-            @Override
-            public void onDeviceList(List<BroadcastMsg> list) {
-                tellDeviceList(list);
-            }
-        });
-        broadcastReceiveThread.start();
     }
 
     private static void tellDeviceList(List<BroadcastMsg> list) {
